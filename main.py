@@ -234,7 +234,7 @@ def enter_missions(msns):
 
 if __name__ == "__main__":
     try:
-        build_msns_and_wps(sys.argv[0])
+        build_msns_and_wps(sys.argv[1])
     except IndexError:
         build_msns_and_wps("waypoints.ini")
 
@@ -242,10 +242,10 @@ if __name__ == "__main__":
 
     if len(active_wps):
         logging.info(f"Entering {len(active_wps)} waypoints")
-        # enter_waypoints(active_wps[:5])
+        # enter_waypoints(active_wps)
 
     if len(active_msns):
         logging.info(f"Entering {len(active_msns)} PP missions")
-        # enter_missions(active_msns{:5)
+        # enter_missions(active_msns[:5])
 
     logging.info("Finished")
