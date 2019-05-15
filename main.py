@@ -1,8 +1,8 @@
 import keyboard
 from time import sleep
-from waypoints import keybinds
+from src.waypoints import keybinds
 import logging
-from objects import MSN, Wp
+from src.objects import MSN, Wp
 import configparser
 import LatLon23
 import sys

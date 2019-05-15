@@ -1,4 +1,4 @@
-from objects import Wp, MSN
+from src.objects import Wp, MSN
 from LatLon23 import LatLon, Latitude, Longitude
 
 active_wps = (
