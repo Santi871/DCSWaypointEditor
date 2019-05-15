@@ -3,10 +3,19 @@ from typing import Any
 from LatLon23 import LatLon, Longitude, Latitude
 import mgrs
 import json
+import urllib.request
 
 
 m = mgrs.MGRS()
 default_bases = dict()
+
+
+def update_base_data(url, filename):
+    with urllib.request.urlopen(url) as response:
+        html = response.read()
+
+    with open(filename, "w+") as f2:
+        f2.write(html.decode('utf-8'))
 
 
 def load_base_data(basedata, basedict):
@@ -76,10 +85,16 @@ class MSN:
             raise ValueError("Waypoint position must be a LatLon object or MGRS coordinate string")
 
 
-with open("cauc.json", "r") as f:
+update_base_data("https://raw.githubusercontent.com/Santi871/HornetWaypointEditor/master/data/"
+                 "pg.json?token=ACQW6PPI77ATCRJ2RZSDSBC44UAOG", "./data/pg.json")
+
+update_base_data("https://raw.githubusercontent.com/Santi871/HornetWaypointEditor/master/data/"
+                 "cauc.json?token=ACQW6PIVKSD72T7FLOBQHCC44W334", "./data/cauc.json")
+
+with open("./data/cauc.json", "r") as f:
     cauc_data = json.load(f)
 
-with open("pg.json", "r") as f:
+with open("./data/pg.json", "r") as f:
     pg_data = json.load(f)
 
 load_base_data(cauc_data, default_bases)
