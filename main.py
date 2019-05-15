@@ -9,13 +9,13 @@ import sys
 
 
 logging.basicConfig(format='%(levelname)s - %(message)s', level=logging.INFO)
-config = configparser.ConfigParser()
-active_wps = list()
-active_msns = list()
 
 
 def build_msns_and_wps(filename):
+    config = configparser.ConfigParser()
     config.read(filename)
+    wps_list = list()
+    msns_list = list()
     missions = config["PREPLANNED MISSIONS"]
     waypoints = config["WAYPOINTS"]
 
@@ -47,10 +47,10 @@ def build_msns_and_wps(filename):
             if msn is None:
                 logging.warning(f"Preplanned mission {i} is set as active but is undefined, skipping")
             else:
-                active_msns.append(msn)
+                msns_list.append(msn)
 
-        logging.info(f"Built {len(active_msns)} preplanned missions")
-        if len(active_msns) > 6:
+        logging.info(f"Built {len(msns_list)} preplanned missions")
+        if len(msns_list) > 6:
             logging.warning("There are more than 6 active preplanned missions, only the first 6 will be entered")
 
     if waypoints["Active_WPs"]:
@@ -83,9 +83,11 @@ def build_msns_and_wps(filename):
             if wpt is None:
                 logging.warning(f"Waypoint {i} is set as active but is undefined, skipping")
             else:
-                active_wps.append(wpt)
+                wps_list.append(wpt)
 
-        logging.info(f"Built {len(active_wps)} waypoints")
+        logging.info(f"Built {len(wps_list)} waypoints")
+
+    return wps_list, msns_list
 
 
 def press_with_delay(key, delay_after=0.2, delay_release=0.2):
@@ -234,9 +236,9 @@ def enter_missions(msns):
 
 if __name__ == "__main__":
     try:
-        build_msns_and_wps(sys.argv[1])
+        active_wps, active_msns = build_msns_and_wps(sys.argv[1])
     except IndexError:
-        build_msns_and_wps("waypoints.ini")
+        active_wps, active_msns = build_msns_and_wps("waypoints.ini")
 
     sleep(5)
 
