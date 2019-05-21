@@ -1,12 +1,10 @@
 from dataclasses import dataclass
 from typing import Any
 from LatLon23 import LatLon, Longitude, Latitude
-import mgrs
 import json
 import urllib.request
 
 
-m = mgrs.MGRS()
 default_bases = dict()
 
 
@@ -19,7 +17,6 @@ def update_base_data(url, filename):
 
 
 def load_base_data(basedata, basedict):
-
     for _, base in basedata.items():
         name = base.get('name')
         lat = base.get('locationDetails').get('lat')
@@ -28,13 +25,6 @@ def load_base_data(basedata, basedict):
         position = LatLon(Latitude(degree=lat), Longitude(degree=lon))
 
         basedict[name] = Base(name, position, elev)
-
-
-@dataclass
-class Coord:
-    lat: int
-    long: int
-    elev: int = 0
 
 
 @dataclass
@@ -54,35 +44,23 @@ class Wp:
         if type(self.position) == str:
             base = default_bases.get(self.position)
 
-            if base is None:
-                latlon = m.toLatLon(self.position.encode())
-                self.position = LatLon(lat=latlon[0], lon=latlon[1])
-            else:
+            if base is not None:
                 self.elevation = base.elev
                 self.name = self.position
                 self.position = base.position
-
+            else:
+                raise ValueError("Base name not found in default bases list")
             return
 
         if not type(self.position) == LatLon:
-            raise ValueError("Waypoint position must be a LatLon object or string of base name")
+            raise ValueError("Waypoint position must be a LatLon object or base name string")
 
 
 @dataclass
 class MSN:
-    position: Any
+    position: LatLon
     elevation: float
     name: str = ""
-
-    def __post_init__(self):
-        if type(self.position) == str:
-            latlon = m.toLatLon(self.position.encode())
-
-            self.position = LatLon(lat=latlon[0], lon=latlon[1])
-            return
-
-        if not type(self.position) == LatLon:
-            raise ValueError("Waypoint position must be a LatLon object or MGRS coordinate string")
 
 
 update_base_data("https://raw.githubusercontent.com/Santi871/HornetWaypointEditor/master/data/"
