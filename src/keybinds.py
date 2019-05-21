@@ -26,11 +26,11 @@ def parse_dcs_binds(using_openbeta):
     parsed_binds = dict()
 
     if using_openbeta:
-        saved_games = f"{str(Path.home())}\\Saved Games\\DCS.openbeta\\Config\\Input\\FA-18C_hornet\\keyboard"
+        dcs_path = f"{str(Path.home())}\\Saved Games\\DCS.openbeta\\Config\\Input\\FA-18C_hornet\\keyboard"
     else:
-        saved_games = f"{str(Path.home())}\\Saved Games\\DCS\\Config\\Input\\FA-18C_hornet\\keyboard"
+        dcs_path = f"{str(Path.home())}\\Saved Games\\DCS\\Config\\Input\\FA-18C_hornet\\keyboard"
 
-    with open(saved_games + "\\Keyboard.diff.lua", mode="r") as f:
+    with open(dcs_path + "\\Keyboard.diff.lua", mode="r") as f:
         c = f.read()
 
     i = c.find("{")
@@ -72,30 +72,13 @@ class BindsManager:
         self.preferences = self.settings['PREFERENCES']
         self.logger = logger
 
-        if self.preferences.getboolean('Use_DCS_Keybinds'):
-            try:
-                self.binds_dict = parse_dcs_binds(self.preferences.getboolean('Using_OpenBeta'))
-            except Exception as e:
-                logger.error(
-                    "Exception occured parsing DCS keybinds, using backup keybinds defined in settings.ini instead",
-                    exc_info=True)
-                self.binds_dict = self.settings['BACKUP KEYBINDS']
-        else:
-            self.binds_dict = self.settings['BACKUP KEYBINDS']
-
-        if "" in [setting for _, setting in self.binds_dict.items()]:
-            raise BindError("Undefined setting in settings.ini, make sure all settings are defined")
+        self.binds_dict = parse_dcs_binds(self.preferences.getboolean('Using_OpenBeta'))
 
     def get_bind(self, bindname):
-        try:
-            bind = self.binds_dict.get(bindname)
+        bind = self.binds_dict.get(bindname)
 
-            if bind is None:
-                raise BindError(f"Bind {bindname} is undefined")
-        except BindError:
-            self.logger.error("Exception occured utilizing bind", exc_info=True)
-            raise
-
+        if bind is None:
+            raise BindError(f"Bind {bindname} is undefined")
         return bind
 
     def ufc(self, num):
