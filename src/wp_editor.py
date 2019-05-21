@@ -14,9 +14,9 @@ def press_with_delay(key, delay_after=0.2, delay_release=0.2):
 
 
 def latlon_tostring(latlong):
-    lat_deg = str(round(latlong.lat.degree))
-    lat_min = str(round(latlong.lat.minute)).zfill(2)
-    lat_sec = latlong.lat.second
+    lat_deg = str(abs(round(latlong.lat.degree)))
+    lat_min = str(abs(round(latlong.lat.minute))).zfill(2)
+    lat_sec = abs(latlong.lat.second)
 
     lat_sec_int, lat_sec_dec = divmod(lat_sec, 1)
 
@@ -25,9 +25,9 @@ def latlon_tostring(latlong):
     if lat_sec_dec:
         lat_sec += "." + str(round(lat_sec_dec, 2))[2:4]
 
-    lon_deg = str(round(latlong.lon.degree))
-    lon_min = str(round(latlong.lon.minute)).zfill(2)
-    lon_sec = latlong.lon.second
+    lon_deg = str(abs(round(latlong.lon.degree)))
+    lon_min = str(abs(round(latlong.lon.minute))).zfill(2)
+    lon_sec = abs(latlong.lon.second)
 
     lon_sec_int, lon_sec_dec = divmod(lon_sec, 1)
 
@@ -138,43 +138,57 @@ class WaypointEditor:
         if two_enters:
             press_with_delay(self.binds_manager.ufc("ENT"), delay_release=0.5)
 
-    def enter_coords(self, lat, long, elev):
-        press_with_delay(self.binds_manager.ufc("2"), delay_release=0.5)
-        self.enter_number(lat)
-        sleep(0.5)
-        press_with_delay(self.binds_manager.ufc("6"), delay_release=0.5)
-        self.enter_number(long)
-
-        if elev:
-            press_with_delay(self.binds_manager.ufc("OSB3"))
-            press_with_delay(self.binds_manager.ufc("OSB1"))
-            press_with_delay(self.binds_manager.ufc("OSB3"))
-            self.enter_number(elev)
-
-    def enter_pp_coord(self, latlong, elev):
+    def enter_coords(self, latlong, elev, pp):
         lat_str, lon_str = latlon_tostring(latlong)
 
-        press_with_delay(self.binds_manager.ufc("OSB1"))
-        press_with_delay(self.binds_manager.ufc("2"), delay_release=0.5)
-        self.enter_number(lat_str, two_enters=True)
+        if not pp:
+            if latlong.lat.degree > 0:
+                press_with_delay(self.binds_manager.ufc("2"), delay_release=0.5)
+            else:
+                press_with_delay(self.binds_manager.ufc("8"), delay_release=0.5)
+            self.enter_number(lat_str)
+            sleep(0.5)
 
-        press_with_delay(self.binds_manager.ufc("OSB3"))
-        press_with_delay(self.binds_manager.ufc("6"), delay_release=0.5)
-        self.enter_number(lon_str, two_enters=True)
+            if latlong.lon.degree > 0:
+                press_with_delay(self.binds_manager.ufc("6"), delay_release=0.5)
+            else:
+                press_with_delay(self.binds_manager.ufc("4"), delay_release=0.5)
+            self.enter_number(lon_str)
 
-        press_with_delay(self.binds_manager.lmdi("14"))
-        press_with_delay(self.binds_manager.lmdi("14"))
+            if elev:
+                press_with_delay(self.binds_manager.ufc("OSB3"))
+                press_with_delay(self.binds_manager.ufc("OSB1"))
+                # press_with_delay(self.binds_manager.ufc("OSB3"))
+                self.enter_number(elev)
+        else:
+            press_with_delay(self.binds_manager.ufc("OSB1"))
+            if latlong.lat.degree > 0:
+                press_with_delay(self.binds_manager.ufc("2"), delay_release=0.5)
+            else:
+                press_with_delay(self.binds_manager.ufc("8"), delay_release=0.5)
+            self.enter_number(lat_str, two_enters=True)
 
-        if elev:
-            press_with_delay(self.binds_manager.ufc("OSB4"))
-            press_with_delay(self.binds_manager.ufc("OSB4"))
+            press_with_delay(self.binds_manager.ufc("OSB3"))
 
-            elev = round(float(elev) / 3.2808)
-            self.enter_number(elev)
+            if latlong.lon.degree > 0:
+                press_with_delay(self.binds_manager.ufc("6"), delay_release=0.5)
+            else:
+                press_with_delay(self.binds_manager.ufc("4"), delay_release=0.5)
+
+            self.enter_number(lon_str, two_enters=True)
+
+            press_with_delay(self.binds_manager.lmdi("14"))
+            press_with_delay(self.binds_manager.lmdi("14"))
+
+            if elev:
+                press_with_delay(self.binds_manager.ufc("OSB4"))
+                press_with_delay(self.binds_manager.ufc("OSB4"))
+                elev = round(float(elev) / 3.2808)
+                self.enter_number(elev)
 
     def enter_waypoints(self, wps):
         i = 1
-        press_with_delay(self.binds_manager.ampcd("5"))
+        press_with_delay(self.binds_manager.ampcd("10"))
         press_with_delay(self.binds_manager.ufc("CLR"))
         press_with_delay(self.binds_manager.ufc("CLR"))
 
@@ -188,9 +202,7 @@ class WaypointEditor:
             press_with_delay(self.binds_manager.ampcd("12"))
             press_with_delay(self.binds_manager.ampcd("5"))
             press_with_delay(self.binds_manager.ufc("OSB1"))
-            lat_str, lon_str = latlon_tostring(wp.position)
-
-            self.enter_coords(lat_str, lon_str, wp.elevation)
+            self.enter_coords(wp.position, wp.elevation, pp=False)
             press_with_delay(self.binds_manager.ufc("CLR"))
 
             i += 1
@@ -209,7 +221,7 @@ class WaypointEditor:
         press_with_delay(self.binds_manager.lmdi("14"))
         press_with_delay(self.binds_manager.ufc("OSB3"))
 
-        self.enter_pp_coord(msn.position, msn.elevation)
+        self.enter_coords(msn.position, msn.elevation, pp=True)
 
         press_with_delay(self.binds_manager.ufc("CLR"))
         press_with_delay(self.binds_manager.ufc("CLR"))
