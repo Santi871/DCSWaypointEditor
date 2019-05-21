@@ -5,21 +5,20 @@ from src.logger import logger
 from src.wp_editor import WaypointEditor
 
 
-def main():
-    settings = ConfigParser()
-    settings.read("settings.ini")
-    preferences = settings['PREFERENCES']
+def main(config):
+    preferences = config['PREFERENCES']
 
     try:
-        editor = WaypointEditor(sys.argv[1], settings, logger)
+        editor = WaypointEditor(sys.argv[1], config, logger)
     except IndexError:
-        editor = WaypointEditor('waypoints.ini', settings, logger)
+        editor = WaypointEditor('waypoints.ini', config, logger)
 
     active_wps, active_msns = editor.build_msns_and_wps()
 
-    for i in reversed(range(preferences.getint('Grace_Period', 5))):
-        logger.info(f"Entering data in {i+1}...")
-        sleep(1)
+    if active_wps or active_msns:
+        for i in reversed(range(preferences.getint('Grace_Period', 5))):
+            logger.info(f"Entering data in {i+1}...")
+            sleep(1)
 
     if active_wps:
         logger.info(f"Entering {len(active_wps)} waypoints")
@@ -34,9 +33,12 @@ def main():
 
 if __name__ == "__main__":
     try:
-        main()
+        settings = ConfigParser()
+        settings.read("settings.ini")
+        main(settings)
     except Exception as e:
         logger.error("Exception occurred", exc_info=True)
         raise e
 
     logger.info("Finished")
+
