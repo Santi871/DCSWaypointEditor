@@ -19,6 +19,8 @@ def main(config):
         for i in reversed(range(preferences.getint('Grace_Period', 5))):
             logger.info(f"Entering data in {i+1}...")
             sleep(1)
+    else:
+        logger.info("No active preplanned missions or waypoints defined")
 
     if active_wps:
         logger.info(f"Entering {len(active_wps)} waypoints")
@@ -41,4 +43,3 @@ if __name__ == "__main__":
         raise e
 
     logger.info("Finished")
-
