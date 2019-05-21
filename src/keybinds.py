@@ -55,9 +55,9 @@ def parse_dcs_binds(using_openbeta):
         elif "UFC Keyboard Pushbutton" in name and ("CLR" in name or "ENT" in name):
             parsed_binds[f'UFC_{name[-3:]}'] = bindstr
         elif "Left MDI PB" in name:
-            parsed_binds[f'LMDI_PB{name[-1:]}'] = bindstr
+            parsed_binds[f'LMDI_PB{name[-2:]}'.replace(' ', '')] = bindstr
         elif "AMPCD PB" in name:
-            parsed_binds[f'AMPCD_PB{name[-1:]}'] = bindstr
+            parsed_binds[f'AMPCD_PB{name[-2:]}'.replace(' ', '')] = bindstr
 
     return parsed_binds
 
