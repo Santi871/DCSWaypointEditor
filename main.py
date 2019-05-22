@@ -3,6 +3,7 @@ from configparser import ConfigParser
 import sys
 from src.logger import logger
 from src.wp_editor import WaypointEditor
+from src.gui import get_gui, run_gui
 
 
 def main(config):
@@ -15,6 +16,9 @@ def main(config):
 
     active_wps, active_msns = editor.build_msns_and_wps()
 
+    window = get_gui(active_wps, active_msns)
+    run_gui(window)
+
     if active_wps or active_msns:
         for i in reversed(range(preferences.getint('Grace_Period', 5))):
             logger.info(f"Entering data in {i+1}...")
@@ -24,13 +28,13 @@ def main(config):
 
     if active_wps:
         logger.info(f"Entering {len(active_wps)} waypoints")
-        editor.enter_waypoints(active_wps)
+        # editor.enter_waypoints(active_wps)
 
     sleep(1)
 
     if active_msns:
         logger.info(f"Entering {len(active_msns)} PP missions")
-        editor.enter_missions(active_msns)
+        # editor.enter_missions(active_msns)
 
 
 if __name__ == "__main__":
