@@ -1,10 +1,8 @@
 import keyboard
 from time import sleep
-from configparser import ConfigParser
-import LatLon23
 from src.keybinds import BindsManager
-from src.objects import MSN, Wp, default_bases
-from src.db import DatabaseInterface
+from src.objects import default_bases
+from src.db import DatabaseInterface, ProfileModel
 
 
 def press_with_delay(key, delay_after=0.2, delay_release=0.2):
@@ -38,6 +36,24 @@ def latlon_tostring(latlong):
         lon_sec += "." + str(round(lon_sec_dec, 2))[2:4]
 
     return lat_deg + lat_min + lat_sec, lon_deg + lon_min + lon_sec
+
+
+class Profile:
+    def __init__(self, profilename, db_interface):
+        self.profilename = profilename
+        self.db_interface = db_interface
+
+        if profilename:
+            self.missions, self.waypoints = self.db_interface.get_profile(profilename)
+        else:
+            self.missions, self.waypoints = list(), list()
+
+    def save(self, profilename=None):
+        self.db_interface.save_profile(profilename, self.missions, self.waypoints)
+        self.profilename = profilename
+
+    def delete(self):
+        self.db_interface.delete_profile(self.profilename)
 
 
 class KeybindsInput:
@@ -114,6 +130,9 @@ class KeybindsInput:
                 self.enter_number(elev)
 
     def enter_waypoints(self, wps):
+        if not wps:
+            return
+
         i = 1
         press_with_delay(self.binds_manager.ampcd("10"))
         press_with_delay(self.binds_manager.ufc("CLR"))
@@ -154,6 +173,8 @@ class KeybindsInput:
         press_with_delay(self.binds_manager.ufc("CLR"))
 
     def enter_missions(self, msns):
+        if not msns:
+            return
 
         press_with_delay(self.binds_manager.lmdi("11"))
         press_with_delay(self.binds_manager.lmdi("4"))
@@ -180,8 +201,10 @@ class WaypointEditor:
         self.msns_list = list()
 
     def get_profile(self, profilename):
-        missions, waypoints = self.db.get_profile(profilename)
-        return missions, waypoints
+        return Profile(profilename, self.db)
+
+    def get_profile_names(self):
+        return self.db.get_profile_names()
 
     def save_profile(self, name, msns, wps):
         self.db.save_profile(name, msns, wps)
@@ -202,7 +225,8 @@ class WaypointEditor:
         self.handler.enter_missions(msns)
 
     def enter_all(self, msns, wps):
-        sleep(self.settings['PREFERENCES'].get('Grace_Period', 5))
+        sleep(int(self.settings['PREFERENCES'].get('Grace_Period', 5)))
         self.handler.enter_missions(msns)
         sleep(1)
         self.handler.enter_waypoints(wps)
+

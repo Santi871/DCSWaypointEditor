@@ -26,7 +26,12 @@ class DatabaseInterface:
         missionmodel_instances = list()
         waypointmodel_instances = list()
 
-        profile = ProfileModel.create(name=name)
+        profile, _ = ProfileModel.get_or_create(name=name)
+        for mission in profile.missions:
+            mission.delete_instance()
+
+        for waypoint in profile.waypoints:
+            waypoint.delete_instance()
 
         self.logger.debug(f"Attempting to save profile {name}: {msns} // {wps}")
         for mission in msns:
@@ -45,6 +50,22 @@ class DatabaseInterface:
                                                           elevation=waypoint.elevation,
                                                           profile=profile)
             waypointmodel_instances.append(waypointmodel_instance)
+
+    @staticmethod
+    def delete_profile(profilename):
+        profile = ProfileModel.get(name=profilename)
+        for mission in profile.missions:
+            mission.delete_instance()
+
+        for waypoint in profile.waypoints:
+            waypoint.delete_instance()
+
+        profile.delete_instance()
+
+    @staticmethod
+    def get_profile_names():
+        profiles = list(ProfileModel.select())
+        return [profile.name for profile in ProfileModel.select()]
 
     @staticmethod
     def close():

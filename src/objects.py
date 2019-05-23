@@ -58,8 +58,8 @@ class Wp:
 
     def to_dict(self):
         d = dict(
-            latitude=self.position.lat.degree,
-            longitude=self.position.lon.degree,
+            latitude=self.position.lat.decimal_degree,
+            longitude=self.position.lon.decimal_degree,
             elevation=self.elevation,
             name=self.name,
         )
@@ -75,8 +75,8 @@ class MSN:
 
     def to_dict(self):
         d = dict(
-            latitude=self.position.lat.degree,
-            longitude=self.position.lon.degree,
+            latitude=self.position.lat.decimal_degree,
+            longitude=self.position.lon.decimal_degree,
             elevation=self.elevation,
             name=self.name,
             number=self.number

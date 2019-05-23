@@ -3,11 +3,6 @@ from sys import stdout
 
 
 with open("log.txt", "w+") as f:
-    f.write("----waypoints.ini----\n\n")
-
-    with open("waypoints.ini", "r") as f2:
-        f.writelines(f2.readlines())
-
     f.write("\n\n----settings.ini----\n\n")
     with open("settings.ini", "r") as f2:
         f.writelines(f2.readlines())

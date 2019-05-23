@@ -11,15 +11,22 @@ import pytesseract
 import keyboard
 
 
-pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
-
-
 class GUI:
     def __init__(self, editor):
         self.editor = editor
-        self.current_missions = list()
-        self.current_waypoints = list()
         self.captured_map_coords = str()
+        self.profile = self.editor.get_profile('')
+
+        pytesseract.pytesseract.tesseract_cmd = self.editor.settings['PREFERENCES']['Tesseract_Path']
+        try:
+            self.tesseract_version = pytesseract.get_tesseract_version()
+            self.capture_status = "Status: Not capturing"
+            self.capture_button_disabled = False
+        except pytesseract.pytesseract.TesseractNotFoundError:
+            self.tesseract_version = None
+            self.capture_status = "Status: Tesseract not found"
+            self.capture_button_disabled = True
+
         self.window = self.create_gui()
 
     def create_gui(self):
@@ -89,8 +96,9 @@ class GUI:
             [framelatitude],
             [framelongitude],
             [frameelevation,
-             PyGUI.Column([[PyGUI.Button("Capture from DCS F10 map", key="capture",
-                                         pad=(1, (18, 3)))], [PyGUI.Text("Status: Not capturing", key="capture_status",
+             PyGUI.Column([[PyGUI.Button("Capture from DCS F10 map", disabled=self.capture_button_disabled,
+                                         key="capture",
+                                         pad=(1, (18, 3)))], [PyGUI.Text(self.capture_status, key="capture_status",
                                                                          auto_size_text=False, size=(20, 1))]])]
         ]
 
@@ -100,16 +108,19 @@ class GUI:
         frameactype = PyGUI.Frame("Aircraft Type", frameactypelayout)
 
         col0 = [
-            [PyGUI.Text("Status: ")],
+            [PyGUI.Text("Select profile:")],
+            [PyGUI.Combo(values=[""] + self.editor.get_profile_names(), readonly=True,
+                         enable_events=True, key='profileSelector', size=(27, 1))],
             [PyGUI.Listbox(values=list(), size=(30, 24), enable_events=True, key='activesList')],
             [PyGUI.Button("Add", size=(26, 1))],
-            [PyGUI.Button("Save profile", size=(12, 1)), PyGUI.Button("Load profile", size=(12, 1))],
+            [PyGUI.Button("Remove", size=(26, 1))],
+            [PyGUI.Button("Save profile", size=(12, 1)), PyGUI.Button("Delete profile", size=(12, 1))],
             [PyGUI.Button("Export to file", size=(12, 1)), PyGUI.Button("Import from file", size=(12, 1))],
         ]
 
         col1 = [
             [PyGUI.Text("Select airfield/BlueFlag FARP")],
-            [PyGUI.Combo(values=[base.name for _, base in self.editor.default_bases.items()], readonly=True,
+            [PyGUI.Combo(values=[""] + [base.name for _, base in self.editor.default_bases.items()], readonly=True,
                          enable_events=True, key='baseSelector')],
             [framedata],
             [frameposition],
@@ -150,7 +161,7 @@ class GUI:
         values = list()
 
         i = 1
-        for mission in self.current_missions:
+        for mission in self.profile.missions:
             namestr = f"MSN{i}"
             if mission.name:
                 namestr += f" | {mission.name}"
@@ -158,7 +169,7 @@ class GUI:
             i += 1
 
         i = 1
-        for waypoint in self.current_waypoints:
+        for waypoint in self.profile.waypoints:
             namestr = f"WP{i}"
             if waypoint.name:
                 namestr += f" | {waypoint.name}"
@@ -205,17 +216,17 @@ class GUI:
                 elevation = self.window.Element("elevFeet").Get()
                 name = self.window.Element("msnName").Get()
 
-                if values[1] and len(self.current_missions) < 6:
+                if values[1] and len(self.profile.missions) < 6:
 
                     try:
                         mission = MSN(LatLon(Latitude(degree=lat_deg, minute=lat_min, second=lat_sec),
                                              Longitude(degree=lon_deg, minute=lon_min, second=lon_sec)),
-                                      elevation=int(elevation or 0), number=len(self.current_missions) + 1, name=name)
-                        self.current_missions.append(mission)
+                                      elevation=int(elevation or 0), number=len(self.profile.missions) + 1, name=name)
+                        self.profile.missions.append(mission)
                     except ValueError:
                         PyGUI.Popup("Error: missing data or invalid data format")
 
-                elif event == "Add mission" and len(self.current_missions) == 6:
+                elif event == "Add mission" and len(self.profile.missions) == 6:
                     PyGUI.Popup("Error: maximum number of missions reached", keep_on_top=True)
 
                 elif values[0]:
@@ -223,13 +234,15 @@ class GUI:
                         waypoint = Wp(LatLon(Latitude(degree=lat_deg, minute=lat_min, second=lat_sec),
                                              Longitude(degree=lon_deg, minute=lon_min, second=lon_sec)),
                                       elevation=int(elevation or 0), name=name)
-                        self.current_waypoints.append(waypoint)
+                        self.profile.waypoints.append(waypoint)
                     except ValueError:
                         PyGUI.Popup("Error: missing data or invalid data format")
 
                 self.update_waypoints_list()
 
-            elif event == "activesList":
+            elif event == "Remove":
+                if not len(values['activesList']):
+                    continue
                 ei = values['activesList'][0].find(' ')
 
                 if ei != -1:
@@ -239,33 +252,64 @@ class GUI:
 
                 if "WP" in valuestr:
                     i = int(valuestr[2:])
-                    mission = self.current_waypoints[i - 1]
+                    self.profile.waypoints.pop(i-1)
                 else:
                     i = int(valuestr[3:])
-                    mission = self.current_missions[i - 1]
+                    self.profile.missions.pop(i-1)
+
+                self.update_waypoints_list()
+
+            elif event == "activesList":
+                if not len(values['activesList']):
+                    continue
+                ei = values['activesList'][0].find(' ')
+
+                if ei != -1:
+                    valuestr = values['activesList'][0][:ei]
+                else:
+                    valuestr = values['activesList'][0]
+
+                if "WP" in valuestr:
+                    i = int(valuestr[2:])
+                    mission = self.profile.waypoints[i - 1]
+                else:
+                    i = int(valuestr[3:])
+                    mission = self.profile.missions[i - 1]
 
                 self.update_position(mission.position, mission.elevation, mission.name)
 
             elif event == "Save profile":
-                name = PyGUI.PopupGetText("Enter profile name", "Saving profile")
-                self.editor.save_profile(name, self.current_missions, self.current_waypoints)
+                name = self.profile.profilename
+                if not name:
+                    name = PyGUI.PopupGetText("Enter profile name", "Saving profile")
 
-            elif event == "Load profile":
-                name = PyGUI.PopupGetText("Enter profile name", "Loading profile")
+                self.profile.save(name)
+                profiles = self.editor.get_profile_names()
+                self.window.Element("profileSelector").Update(values=[""] + profiles,
+                                                              set_to_index=profiles.index(name)+1)
+
+            elif event == "Delete profile":
+                self.profile.delete()
+                profiles = self.editor.get_profile_names()
+                self.window.Element("profileSelector").Update(values=[""] + profiles)
+                self.profile = self.editor.get_profile("")
+                self.update_waypoints_list()
+
+            elif event == "profileSelector":
                 try:
-                    self.current_missions, self.current_waypoints = self.editor.get_profile(name)
+                    self.profile = self.editor.get_profile(values['profileSelector'])
                     self.update_waypoints_list()
                 except DoesNotExist:
                     PyGUI.Popup("Profile not found")
 
             elif event == "Export to file":
-                e = dict(missions=[mission.to_dict() for mission in self.current_missions],
-                         waypoints=[waypoint.to_dict() for waypoint in self.current_waypoints])
+                e = dict(missions=[mission.to_dict() for mission in self.profile.missions],
+                         waypoints=[waypoint.to_dict() for waypoint in self.profile.waypoints])
 
                 filename = PyGUI.PopupGetText("Enter file name", "Exporting profile")
 
                 with open(filename + ".json", "w+") as f:
-                    json.dump(e, f)
+                    json.dump(e, f, indent=4)
 
             elif event == "Import from file":
                 filename = PyGUI.PopupGetFile("Enter file name", "Importing profile")
@@ -276,33 +320,33 @@ class GUI:
                 with open(filename, "r") as f:
                     d = json.load(f)
 
-                self.current_missions = [MSN(position=LatLon(Latitude(mission['latitude']),
+                self.profile.missions = [MSN(position=LatLon(Latitude(mission['latitude']),
                                                              Longitude(mission['longitude'])),
                                              name=mission['name'], elevation=mission['elevation'],
                                              number=mission['number']) for mission in d.get('missions', list())]
-                self.current_waypoints = [
+                self.profile.waypoints = [
                     Wp(position=LatLon(Latitude(waypoint['latitude']), Longitude(waypoint['longitude'])),
                        name=waypoint['name'],
                        elevation=waypoint['elevation']) for waypoint in d.get('waypoints', list())]
 
                 self.update_waypoints_list()
             elif event == "map":
-                if not self.current_waypoints and not self.current_missions:
+                if not self.profile.waypoints and not self.profile.missions:
                     continue
 
-                lats = [waypoint.position.lat.degree for waypoint in self.current_waypoints] + \
-                       [mission.position.lat.degree for mission in self.current_missions]
+                lats = [waypoint.position.lat.degree for waypoint in self.profile.waypoints] + \
+                       [mission.position.lat.degree for mission in self.profile.missions]
 
-                lons = [waypoint.position.lon.degree for waypoint in self.current_waypoints] + \
-                       [mission.position.lon.degree for mission in self.current_missions]
+                lons = [waypoint.position.lon.degree for waypoint in self.profile.waypoints] + \
+                       [mission.position.lon.degree for mission in self.profile.missions]
 
                 m = folium.Map(location=[(max(lats) + min(lats)) / 2, (max(lons) + min(lons)) / 2], zoom_start=6)
 
-                for waypoint in self.current_waypoints:
+                for waypoint in self.profile.waypoints:
                     folium.Marker((waypoint.position.lat.decimal_degree, waypoint.position.lon.decimal_degree),
                                   tooltip=waypoint.name or None).add_to(m)
 
-                for mission in self.current_missions:
+                for mission in self.profile.missions:
                     folium.Marker((mission.position.lat.decimal_degree, mission.position.lon.decimal_degree),
                                   tooltip=mission.name or None).add_to(m)
 
@@ -329,12 +373,14 @@ class GUI:
                     self.window.Element('capture').Update(disabled=False)
 
             elif event == "baseSelector":
-                base = self.editor.default_bases[values['baseSelector']]
-                self.update_position(base.position, base.elev, base.name)
+                base = self.editor.default_bases.get(values['baseSelector'])
+
+                if base is not None:
+                    self.update_position(base.position, base.elev, base.name)
 
             elif event == "enter":
                 self.window.Element('enter').Update(disabled=True)
-                self.editor.enter_all(self.current_missions, self.current_waypoints)
+                self.editor.enter_all(self.profile.missions, self.profile.waypoints)
                 self.window.Element('enter').Update(disabled=False)
 
         try:
