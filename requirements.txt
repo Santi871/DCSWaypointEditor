@@ -1,3 +1,7 @@
+Pillow
+folium
+pytesseract
+peewee
 PySimpleGUI
 LatLon23
 keyboard
