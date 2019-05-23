@@ -19,12 +19,13 @@ def update_base_data(url, filename):
 def load_base_data(basedata, basedict):
     for _, base in basedata.items():
         name = base.get('name')
-        lat = base.get('locationDetails').get('lat')
-        lon = base.get('locationDetails').get('lon')
-        elev = round(base.get('locationDetails').get('altitude'))
-        position = LatLon(Latitude(degree=lat), Longitude(degree=lon))
 
-        basedict[name] = Base(name, position, elev)
+        if name not in ("Stennis", "Kuznetsov", "Kuznetsov North", "Kuznetsov South"):
+            lat = base.get('locationDetails').get('lat')
+            lon = base.get('locationDetails').get('lon')
+            elev = round(base.get('locationDetails').get('altitude'))
+            position = LatLon(Latitude(degree=lat), Longitude(degree=lon))
+            basedict[name] = Base(name, position, elev)
 
 
 @dataclass
@@ -37,7 +38,7 @@ class Base:
 @dataclass
 class Wp:
     position: Any
-    elevation: int = 0
+    elevation: float = 0
     name: str = ""
 
     def __post_init__(self):
@@ -55,12 +56,32 @@ class Wp:
         if not type(self.position) == LatLon:
             raise ValueError("Waypoint position must be a LatLon object or base name string")
 
+    def to_dict(self):
+        d = dict(
+            latitude=self.position.lat.degree,
+            longitude=self.position.lon.degree,
+            elevation=self.elevation,
+            name=self.name,
+        )
+        return d
+
 
 @dataclass
 class MSN:
     position: LatLon
     elevation: float
     name: str = ""
+    number: int = 0
+
+    def to_dict(self):
+        d = dict(
+            latitude=self.position.lat.degree,
+            longitude=self.position.lon.degree,
+            elevation=self.elevation,
+            name=self.name,
+            number=self.number
+        )
+        return d
 
 
 update_base_data("https://raw.githubusercontent.com/Santi871/HornetWaypointEditor/master/data/"
