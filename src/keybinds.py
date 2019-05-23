@@ -67,12 +67,9 @@ class BindError(Exception):
 
 
 class BindsManager:
-    def __init__(self, logger, settings):
-        self.settings = settings
-        self.preferences = self.settings['PREFERENCES']
+    def __init__(self, logger, preferences):
         self.logger = logger
-
-        self.binds_dict = parse_dcs_binds(self.preferences.getboolean('Using_OpenBeta'))
+        self.binds_dict = parse_dcs_binds(preferences.getboolean('Using_OpenBeta'))
 
     def get_bind(self, bindname):
         bind = self.binds_dict.get(bindname)
