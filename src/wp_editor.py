@@ -3,7 +3,8 @@ from time import sleep
 from configparser import ConfigParser
 import LatLon23
 from src.keybinds import BindsManager
-from src.objects import MSN, Wp
+from src.objects import MSN, Wp, default_bases
+from src.db import DatabaseInterface
 
 
 def press_with_delay(key, delay_after=0.2, delay_release=0.2):
@@ -39,86 +40,12 @@ def latlon_tostring(latlong):
     return lat_deg + lat_min + lat_sec, lon_deg + lon_min + lon_sec
 
 
-class WaypointEditor:
+class KeybindsInput:
 
-    def __init__(self, wps_filename, settings, logger):
+    def __init__(self, settings, logger):
         self.logger = logger
-        self.wps_filename = wps_filename
         self.settings = settings
-        self.binds_manager = BindsManager(logger, settings)
-        self.wps_list = None
-        self.msns_list = None
-
-    def build_msns_and_wps(self):
-        self.wps_list = list()
-        self.msns_list = list()
-        config = ConfigParser()
-        config.read(self.wps_filename)
-        missions = config["PREPLANNED MISSIONS"]
-        waypoints = config["WAYPOINTS"]
-
-        if missions["Active_MSNs"]:
-            active_missions = [int(x) for x in missions["Active_MSNs"].split(",") if x != ""]
-            self.logger.info(f"Building {len(active_missions)} preplanned missions")
-
-            for i in active_missions:
-                msn = None
-                if not missions[f"MSN{i}_LatLon"]:
-                    self.logger.error(f"Preplanned mission {i} is set as active but target position is undefined"
-                                      f" skipping")
-                    continue
-
-                if not missions[f"MSN{i}_Elev"]:
-                    self.logger.error(f"Preplanned mission {i} is set as active but target elevation is undefined,"
-                                      f" skipping")
-                    continue
-
-                if missions[f"MSN{i}_LatLon"]:
-                    latlon = missions[f"MSN{i}_LatLon"].split("/")
-                    latlon = LatLon23.string2latlon(latlon[0], latlon[1], "d% %m% %S")
-                    msn = MSN(latlon, int(missions[f"MSN{i}_Elev"]), name=missions[f"MSN{i}_Name"])
-
-                if msn is None:
-                    self.logger.error(f"Preplanned mission {i} is set as active but is undefined, skipping")
-                else:
-                    self.msns_list .append(msn)
-
-            self.logger.info(f"Built {len(self.msns_list )} preplanned missions")
-            if len(self.msns_list ) > 6:
-                self.logger.warning("There are more than 6 active preplanned missions, only the first 6 will be"
-                                    " entered")
-
-        if waypoints["Active_WPs"]:
-            active_waypoints = [int(x) for x in waypoints["Active_WPs"].split(",") if x != ""]
-            self.logger.info(f"Building {len(active_waypoints)} waypoints")
-
-            for i in active_waypoints:
-                wpt = None
-                if not waypoints[f"WP{i}_Elev"]:
-                    elev = 0
-                else:
-                    elev = int(waypoints[f"WP{i}_Elev"])
-
-                if waypoints[f"WP{i}_LatLon"]:
-                    latlon = waypoints[f"WP{i}_LatLon"].split("/")
-                    latlon = LatLon23.string2latlon(latlon[0], latlon[1], "d% %m% %S")
-
-                    wpt = Wp(latlon, elev)
-
-                if wpt is not None and waypoints[f"WP{i}_Elev"]:
-                    wpt.elevation = int(waypoints[f"WP{i}_Elev"])
-
-                if waypoints[f"WP{i}_Name"]:
-                    wpt = Wp(waypoints[f"WP{i}_Name"])
-
-                if wpt is None:
-                    self.logger.error(f"Waypoint {i} is set as active but is undefined, skipping")
-                else:
-                    self.wps_list.append(wpt)
-
-            self.logger.info(f"Built {len(self.wps_list)} waypoints")
-
-        return self.wps_list, self.msns_list[:5]
+        self.binds_manager = BindsManager(logger, settings['PREFERENCES'])
 
     def enter_number(self, number, two_enters=False):
         for num in str(number):
@@ -239,3 +166,44 @@ class WaypointEditor:
         press_with_delay(self.binds_manager.lmdi("6"))
         press_with_delay(self.binds_manager.lmdi("19"))
         press_with_delay(self.binds_manager.lmdi("6"))
+
+
+class WaypointEditor:
+
+    def __init__(self, wps_filename, settings, logger):
+        self.logger = logger
+        self.wps_filename = wps_filename
+        self.settings = settings
+        self.handler = KeybindsInput(settings, logger)
+        self.db = DatabaseInterface('profiles.db', logger)
+        self.default_bases = default_bases
+        self.wps_list = list()
+        self.msns_list = list()
+
+    def get_profile(self, profilename):
+        missions, waypoints = self.db.get_profile(profilename)
+        return missions, waypoints
+
+    def save_profile(self, name, msns, wps):
+        self.db.save_profile(name, msns, wps)
+
+    def enter_number(self, number, two_enters=False):
+        self.handler.enter_number(number, two_enters)
+
+    def enter_coords(self, latlong, elev, pp):
+        self.handler.enter_coords(latlong, elev, pp)
+
+    def enter_waypoints(self, wps):
+        self.handler.enter_waypoints(wps)
+
+    def enter_pp_msn(self, msn, n):
+        self.handler.enter_pp_msn(msn, n)
+
+    def enter_missions(self, msns):
+        self.handler.enter_missions(msns)
+
+    def enter_all(self, msns, wps):
+        sleep(self.settings['PREFERENCES'].get('Grace_Period', 5))
+        self.handler.enter_missions(msns)
+        sleep(1)
+        self.handler.enter_waypoints(wps)
