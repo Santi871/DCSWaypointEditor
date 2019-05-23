@@ -170,9 +170,8 @@ class KeybindsInput:
 
 class WaypointEditor:
 
-    def __init__(self, wps_filename, settings, logger):
+    def __init__(self, settings, logger):
         self.logger = logger
-        self.wps_filename = wps_filename
         self.settings = settings
         self.handler = KeybindsInput(settings, logger)
         self.db = DatabaseInterface('profiles.db', logger)
