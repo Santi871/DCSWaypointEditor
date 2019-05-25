@@ -201,11 +201,29 @@ class GUI:
 
         self.window.Element('activesList').Update(values=values)
 
-    @staticmethod
-    def capture_map_coords():
+    def add_waypoint(self, wptype, position, elevation, name=None):
+        if name is None:
+            name = str()
+
+        try:
+            if wptype == "MSN":
+                mission = MSN(position=position, elevation=int(elevation) or 0, number=len(self.profile.missions) + 1)
+                self.profile.missions.append(mission)
+
+            elif wptype == "WP":
+                waypoint = Wp(position, elevation=int(elevation or 0), name=name)
+                self.profile.waypoints.append(waypoint)
+
+            self.update_waypoints_list()
+        except ValueError:
+            PyGUI.Popup("Error: missing data or invalid data format")
+
+    def capture_map_coords(self):
+        self.logger.debug("Attempting to capture map coords")
         image = ImageGrab.grab((101, 5, 101 + 269, 5 + 27))
         enhancer = ImageEnhance.Contrast(image)
         captured_map_coords = pytesseract.image_to_string(ImageOps.invert(enhancer.enhance(3)))
+        self.logger.debug("Captured text: " + captured_map_coords)
         return captured_map_coords
 
     def parse_map_coords_string(self, coords_string):
@@ -215,7 +233,14 @@ class GUI:
         lon_string = split_latlon[1].replace('£', 'E').replace('E', '').replace('W', "-")
 
         position = string2latlon(lat_string, lon_string, format_str="d%-%m%-%S")
-        elevation = int(split_string[1].replace(' ', '').replace('ft', ''))
+        elevation = split_string[1].replace(' ', '')
+        if "ft" in elevation:
+            elevation = int(elevation.replace("ft", ""))
+        elif "m" in elevation:
+            elevation = round(int(elevation.replace("ft", ""))*3.281)
+        else:
+            raise ValueError("Unable to parse elevation: " + elevation)
+
         self.captured_map_coords = str()
         return position, elevation
 
@@ -225,12 +250,15 @@ class GUI:
             position, elevation = self.parse_map_coords_string(captured_coords)
             self.update_position(position, elevation)
             self.window.Element('capture_status').Update("Status: Captured")
+            self.logger.debug("Parsed text as coords succesfully: " + str(position))
         except (IndexError, ValueError):
+            self.logger.debug("Failed to parse captured text", exc_info=True)
             self.window.Element('capture_status').Update("Status: Failed to capture")
         finally:
             self.window.Element('quick_capture').Update(disabled=False)
             self.window.Element('capture').Update(text="Capture from DCS F10 map")
             self.window.Element('capture_status').Update("Status: Not capturing")
+            self.capturing = False
 
         keyboard.remove_hotkey('ctrl+t')
 
@@ -282,32 +310,19 @@ class GUI:
                 lon_min = self.window.Element("lonMin").Get()
                 lon_sec = self.window.Element("lonSec").Get()
 
+                position = LatLon(Latitude(degree=lat_deg, minute=lat_min, second=lat_sec),
+                                  Longitude(degree=lon_deg, minute=lon_min, second=lon_sec))
                 elevation = self.window.Element("elevFeet").Get()
                 name = self.window.Element("msnName").Get()
 
                 if self.values[1] and len(self.profile.missions) < 6:
-
-                    try:
-                        mission = MSN(LatLon(Latitude(degree=lat_deg, minute=lat_min, second=lat_sec),
-                                             Longitude(degree=lon_deg, minute=lon_min, second=lon_sec)),
-                                      elevation=int(elevation or 0), number=len(self.profile.missions) + 1, name=name)
-                        self.profile.missions.append(mission)
-                    except ValueError:
-                        PyGUI.Popup("Error: missing data or invalid data format")
+                    self.add_waypoint("MSN", position, elevation, name)
 
                 elif event == "Add mission" and len(self.profile.missions) == 6:
                     PyGUI.Popup("Error: maximum number of missions reached", keep_on_top=True)
 
                 elif self.values[0]:
-                    try:
-                        waypoint = Wp(LatLon(Latitude(degree=lat_deg, minute=lat_min, second=lat_sec),
-                                             Longitude(degree=lon_deg, minute=lon_min, second=lon_sec)),
-                                      elevation=int(elevation or 0), name=name)
-                        self.profile.waypoints.append(waypoint)
-                    except ValueError:
-                        PyGUI.Popup("Error: missing data or invalid data format")
-
-                self.update_waypoints_list()
+                    self.add_waypoint("WP", position, elevation, name)
 
             elif event == "Remove":
                 if not len(self.values['activesList']):
