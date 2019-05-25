@@ -3,6 +3,7 @@ from time import sleep
 from src.keybinds import BindsManager
 from src.objects import default_bases
 from src.db import DatabaseInterface, ProfileModel
+from src.logger import get_logger
 
 
 def press_with_delay(key, delay_after=0.2, delay_release=0.2):
@@ -39,9 +40,10 @@ def latlon_tostring(latlong):
 
 
 class Profile:
-    def __init__(self, profilename, db_interface):
+    def __init__(self, profilename, db_interface, aircraft=None):
         self.profilename = profilename
         self.db_interface = db_interface
+        self.aircraft = aircraft
 
         if profilename:
             self.missions, self.waypoints = self.db_interface.get_profile(profilename)
@@ -49,8 +51,15 @@ class Profile:
             self.missions, self.waypoints = list(), list()
 
     def save(self, profilename=None):
-        self.db_interface.save_profile(profilename, self.missions, self.waypoints)
-        self.profilename = profilename
+        if not self.waypoints and not self.missions:
+            return
+
+        if profilename is not None:
+            self.profilename = profilename
+
+        if profilename:
+            self.db_interface.save_profile(self)
+            self.profilename = profilename
 
     def delete(self):
         self.db_interface.delete_profile(self.profilename)
@@ -58,10 +67,10 @@ class Profile:
 
 class KeybindsInput:
 
-    def __init__(self, settings, logger):
-        self.logger = logger
+    def __init__(self, settings):
+        self.logger = get_logger("keybinds_input")
         self.settings = settings
-        self.binds_manager = BindsManager(logger, settings['PREFERENCES'])
+        self.binds_manager = BindsManager(self.logger, settings['PREFERENCES'])
 
     def enter_number(self, number, two_enters=False):
         for num in str(number):
@@ -191,23 +200,24 @@ class KeybindsInput:
 
 class WaypointEditor:
 
-    def __init__(self, settings, logger):
-        self.logger = logger
+    def __init__(self, settings):
+        self.logger = get_logger("editor")
         self.settings = settings
-        self.handler = KeybindsInput(settings, logger)
-        self.db = DatabaseInterface('profiles.db', logger)
+        self.handler = KeybindsInput(settings)
+        self.db = DatabaseInterface(settings['PREFERENCES'].get("DB_Name", "profiles.db"))
         self.default_bases = default_bases
         self.wps_list = list()
         self.msns_list = list()
+        self.aircraft = "hornet"
 
     def get_profile(self, profilename):
-        return Profile(profilename, self.db)
+        return Profile(profilename, self.db, self.aircraft)
 
     def get_profile_names(self):
         return self.db.get_profile_names()
 
-    def save_profile(self, name, msns, wps):
-        self.db.save_profile(name, msns, wps)
+    def save_profile(self, profile):
+        self.db.save_profile(profile)
 
     def enter_number(self, number, two_enters=False):
         self.handler.enter_number(number, two_enters)
