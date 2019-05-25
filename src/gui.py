@@ -201,16 +201,21 @@ class GUI:
 
         self.window.Element('activesList').Update(values=values)
 
-    def add_waypoint(self, wptype, position, elevation, name=None):
+    def add_waypoint(self, position, elevation, name=None):
         if name is None:
             name = str()
 
+        wptype = None
+
+        if wptype is None:
+            return
+
         try:
-            if wptype == "MSN":
+            if self.values[1] and len(self.profile.missions) < 6:
                 mission = MSN(position=position, elevation=int(elevation) or 0, number=len(self.profile.missions) + 1)
                 self.profile.missions.append(mission)
 
-            elif wptype == "WP":
+            elif self.values[0]:
                 waypoint = Wp(position, elevation=int(elevation or 0), name=name)
                 self.profile.waypoints.append(waypoint)
 
@@ -269,11 +274,7 @@ class GUI:
             position, elevation = self.parse_map_coords_string(captured_coords)
         except (IndexError, ValueError):
             return
-
-        if len(self.profile.missions) < 6 and self.values[1]:
-            self.add_waypoint("MSN", position, elevation)
-        elif self.values[0]:
-            self.add_waypoint("WP", position, elevation)
+        self.add_waypoint(position, elevation)
 
     def stop_quick_capture(self):
         try:
@@ -313,14 +314,7 @@ class GUI:
                 elevation = self.window.Element("elevFeet").Get()
                 name = self.window.Element("msnName").Get()
 
-                if self.values[1] and len(self.profile.missions) < 6:
-                    self.add_waypoint("MSN", position, elevation, name)
-
-                elif event == "Add mission" and len(self.profile.missions) == 6:
-                    PyGUI.Popup("Error: maximum number of missions reached", keep_on_top=True)
-
-                elif self.values[0]:
-                    self.add_waypoint("WP", position, elevation, name)
+                self.add_waypoint(position, elevation, name)
 
             elif event == "Remove":
                 if not len(self.values['activesList']):
