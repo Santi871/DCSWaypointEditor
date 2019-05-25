@@ -223,7 +223,7 @@ class GUI:
         image = ImageGrab.grab((101, 5, 101 + 269, 5 + 27))
         enhancer = ImageEnhance.Contrast(image)
         captured_map_coords = pytesseract.image_to_string(ImageOps.invert(enhancer.enhance(3)))
-        self.logger.debug("Captured text: " + captured_map_coords)
+        self.logger.debug("Raw captured text: " + captured_map_coords)
         return captured_map_coords
 
     def parse_map_coords_string(self, coords_string):
@@ -237,7 +237,7 @@ class GUI:
         if "ft" in elevation:
             elevation = int(elevation.replace("ft", ""))
         elif "m" in elevation:
-            elevation = round(int(elevation.replace("ft", ""))*3.281)
+            elevation = round(int(elevation.replace("m", ""))*3.281)
         else:
             raise ValueError("Unable to parse elevation: " + elevation)
 
@@ -295,8 +295,8 @@ class GUI:
     def run(self):
         while True:
             event, self.values = self.window.Read()
-            self.logger.debug(str(event))
-            self.logger.debug(str(self.values))
+            self.logger.debug("Event: " + str(event))
+            self.logger.debug("Values: " + str(self.values))
 
             if event is None or event == 'Exit':
                 break
