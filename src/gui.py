@@ -202,21 +202,29 @@ class GUI:
         self.window.Element('activesList').Update(values=values)
 
     def add_waypoint(self, position, elevation, name=None):
+        max_missions = 6
+
+        wpadded = False
         if name is None:
             name = str()
 
         try:
-            if self.values[1] and len(self.profile.missions) < 6:
+            if self.values[1] and len(self.profile.missions) < max_missions:
                 mission = MSN(position=position, elevation=int(elevation) or 0, number=len(self.profile.missions) + 1)
                 self.profile.missions.append(mission)
+                wpadded = True
 
             elif self.values[0]:
                 waypoint = Wp(position, elevation=int(elevation or 0), name=name)
                 self.profile.waypoints.append(waypoint)
+                wpadded = True
 
-            self.update_waypoints_list()
+            if wpadded:
+                self.update_waypoints_list()
         except ValueError:
             PyGUI.Popup("Error: missing data or invalid data format")
+
+        return wpadded
 
     def capture_map_coords(self):
         self.logger.debug("Attempting to capture map coords")
@@ -268,8 +276,11 @@ class GUI:
         try:
             position, elevation = self.parse_map_coords_string(captured_coords)
         except (IndexError, ValueError):
+            self.logger.error("Failed to parse captured text", exc_info=True)
             return
-        self.add_waypoint(position, elevation)
+        added = self.add_waypoint(position, elevation)
+        if not added:
+            self.stop_quick_capture()
 
     def stop_quick_capture(self):
         try:
@@ -277,10 +288,6 @@ class GUI:
         except KeyError:
             pass
 
-        try:
-            keyboard.remove_hotkey('ctrl+r')
-        except KeyError:
-            pass
         self.window.Element('capture').Update(text="Capture from DCS F10 map")
         self.window.Element('quick_capture').Update(disabled=False)
         self.window.Element('capture_status').Update("Status: Not capturing")
@@ -458,7 +465,6 @@ class GUI:
                 self.capturing = True
                 self.window.Refresh()
                 keyboard.add_hotkey("ctrl+t", self.add_wp_parsed_coords, timeout=1)
-                keyboard.add_hotkey("ctrl+r", self.stop_quick_capture, timeout=1)
 
             elif event == "baseSelector":
                 base = self.editor.default_bases.get(self.values['baseSelector'])
