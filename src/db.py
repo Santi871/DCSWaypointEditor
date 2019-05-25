@@ -13,7 +13,6 @@ class DatabaseInterface:
         self.logger.debug("Connected to database")
 
     def get_profile(self, profilename):
-        sequences = set()
         profile = ProfileModel.get(ProfileModel.name == profilename)
         msns = [MSN(LatLon(Latitude(mission.latitude), Longitude(mission.longitude)),
                     elevation=mission.elevation, name=mission.name) for mission in profile.missions]
@@ -22,7 +21,6 @@ class DatabaseInterface:
         for waypoint in profile.waypoints:
             if waypoint.sequence:
                 sequence = waypoint.sequence.identifier
-                sequences.add(sequence)
             else:
                 sequence = None
 
@@ -32,7 +30,7 @@ class DatabaseInterface:
             wps.append(wp)
 
         self.logger.debug(f"Fetched {profilename} from DB, with {len(msns)} missions and {len(wps)} waypoints")
-        return msns, wps, list(sequences)
+        return msns, wps
 
     def save_profile(self, profileinstance):
         delete_list = list()

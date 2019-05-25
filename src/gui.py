@@ -437,8 +437,10 @@ class GUI:
                 self.profile.waypoints = [
                     Wp(position=LatLon(Latitude(waypoint['latitude']), Longitude(waypoint['longitude'])),
                        name=waypoint['name'],
-                       elevation=waypoint['elevation']) for waypoint in d.get('waypoints', list())]
+                       elevation=waypoint['elevation'],
+                       sequence=waypoint['sequence']) for waypoint in d.get('waypoints', list())]
 
+                self.profile.build_sequences()
                 self.update_waypoints_list()
 
             elif event == "map":

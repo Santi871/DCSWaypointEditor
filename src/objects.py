@@ -63,6 +63,7 @@ class Wp:
             longitude=self.position.lon.decimal_degree,
             elevation=self.elevation,
             name=self.name,
+            sequence=self.sequence
         )
         return d
 
@@ -90,10 +91,19 @@ class Profile:
         self.aircraft = aircraft
 
         if profilename:
-            self.missions, self.waypoints, self.sequences = self.db_interface.get_profile(profilename)
+            self.missions, self.waypoints = self.db_interface.get_profile(profilename)
         else:
-            self.missions, self.waypoints, self.sequences = list(), list(), list()
+            self.missions, self.waypoints = list(), list()
 
+        self.sequences = None
+        self.build_sequences()
+
+    def build_sequences(self):
+        self.sequences = set()
+        for waypoint in self.waypoints:
+            if waypoint.sequence:
+                self.sequences.add(waypoint.sequence)
+        self.sequences = list(self.sequences)
         self.sequences.sort()
 
     def save(self, profilename=None):
