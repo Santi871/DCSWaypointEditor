@@ -1,6 +1,7 @@
 import PySimpleGUI as PyGUI
 from peewee import DoesNotExist
 from objects import MSN, Wp
+from logger import get_logger
 from LatLon23 import LatLon, Longitude, Latitude, string2latlon
 import json
 import folium
@@ -13,9 +14,13 @@ import keyboard
 
 class GUI:
     def __init__(self, editor):
+        self.logger = get_logger("gui")
         self.editor = editor
-        self.captured_map_coords = str()
+        self.captured_map_coords = None
         self.profile = self.editor.get_profile('')
+        self.exit_quick_capture = False
+        self.values = None
+        self.capturing = False
 
         pytesseract.pytesseract.tesseract_cmd = self.editor.settings['PREFERENCES']['Tesseract_Path']
         try:
@@ -29,7 +34,12 @@ class GUI:
 
         self.window = self.create_gui()
 
+    def exit_capture(self):
+        self.exit_quick_capture = True
+
     def create_gui(self):
+        self.logger.debug("Creating GUI")
+
         latitude_col1 = [
             [PyGUI.Text("Degrees")],
             [PyGUI.InputText(size=(10, 1), key="latDeg")],
@@ -76,14 +86,8 @@ class GUI:
              PyGUI.Radio("FP", group_id="wp_type", disabled=True), PyGUI.Radio("ST", group_id="wp_type",
                                                                                disabled=True)],
             [PyGUI.Radio("IP", group_id="wp_type", disabled=True), PyGUI.Radio("DP", group_id="wp_type", disabled=True),
-             PyGUI.Radio("HA", group_id="wp_type", disabled=True)],
-        ]
-
-        frameactypelayout = [
-            [PyGUI.Radio("F/A-18C", group_id="ac_type", default=True), PyGUI.Radio("F-14A/B", group_id="ac_type",
-                                                                                   disabled=True),
-             PyGUI.Radio("M-2000C", group_id="ac_type", disabled=True), PyGUI.Radio("A-10C", group_id="ac_type",
-                                                                                    disabled=True)],
+             PyGUI.Radio("HA", group_id="wp_type", disabled=True), PyGUI.Button("Quick Capture", disabled=False,
+                                                                                key="quick_capture", pad=(5, (3, 8)))],
         ]
 
         framelongitude = PyGUI.Frame("Longitude", [[PyGUI.Column(longitude_col1), PyGUI.Column(longitude_col2),
@@ -105,7 +109,6 @@ class GUI:
         frameposition = PyGUI.Frame("Position", framepositionlayout)
         framedata = PyGUI.Frame("Data", framedatalayoutcol2)
         framewptype = PyGUI.Frame("Waypoint Type", framewptypelayout)
-        frameactype = PyGUI.Frame("Aircraft Type", frameactypelayout)
 
         col0 = [
             [PyGUI.Text("Select profile:")],
@@ -122,10 +125,8 @@ class GUI:
             [PyGUI.Text("Select airfield/BlueFlag FARP")],
             [PyGUI.Combo(values=[""] + [base.name for _, base in self.editor.default_bases.items()], readonly=True,
                          enable_events=True, key='baseSelector')],
-            [framedata],
+            [framedata, framewptype],
             [frameposition],
-            [framewptype],
-            [frameactype],
             [PyGUI.Button("Open map in browser", key="map"), PyGUI.Button("Enter into AC", key="enter")],
         ]
 
@@ -139,17 +140,39 @@ class GUI:
 
         return PyGUI.Window('Waypoint Editor', layout)
 
-    def update_position(self, position, elevation, name=None):
-        self.window.Element("latDeg").Update(round(position.lat.degree))
-        self.window.Element("latMin").Update(round(position.lat.minute))
-        self.window.Element("latSec").Update(round(position.lat.second, 2))
+    def update_position(self, position=None, elevation=None, name=None):
 
-        self.window.Element("lonDeg").Update(round(position.lon.degree))
-        self.window.Element("lonMin").Update(round(position.lon.minute))
-        self.window.Element("lonSec").Update(round(position.lon.second, 2))
+        if position is not None:
+            latdeg = round(position.lat.degree)
+            latmin = round(position.lat.minute)
+            latsec = round(position.lat.second, 2)
 
-        self.window.Element("elevFeet").Update(round(elevation))
-        self.window.Element("capture_status").Update("Status: Not capturing")
+            londeg = round(position.lon.degree)
+            lonmin = round(position.lon.minute)
+            lonsec = round(position.lon.second, 2)
+        else:
+            latdeg = ""
+            latmin = ""
+            latsec = ""
+
+            londeg = ""
+            lonmin = ""
+            lonsec = ""
+
+        self.window.Element("latDeg").Update(latdeg)
+        self.window.Element("latMin").Update(latmin)
+        self.window.Element("latSec").Update(latsec)
+
+        self.window.Element("lonDeg").Update(londeg)
+        self.window.Element("lonMin").Update(lonmin)
+        self.window.Element("lonSec").Update(lonsec)
+
+        if elevation is not None:
+            elevation = round(elevation)
+        else:
+            elevation = ""
+
+        self.window.Element("elevFeet").Update(elevation)
         self.window.Refresh()
 
         if type(name) == str:
@@ -178,11 +201,12 @@ class GUI:
 
         self.window.Element('activesList').Update(values=values)
 
-    def capture_map_coords(self):
+    @staticmethod
+    def capture_map_coords():
         image = ImageGrab.grab((101, 5, 101 + 269, 5 + 27))
         enhancer = ImageEnhance.Contrast(image)
-        self.captured_map_coords = pytesseract.image_to_string(ImageOps.invert(enhancer.enhance(3)))
-        print("Recstr: " + self.captured_map_coords)
+        captured_map_coords = pytesseract.image_to_string(ImageOps.invert(enhancer.enhance(3)))
+        return captured_map_coords
 
     def parse_map_coords_string(self, coords_string):
         split_string = coords_string.split(',')
@@ -195,11 +219,56 @@ class GUI:
         self.captured_map_coords = str()
         return position, elevation
 
+    def input_parsed_coords(self):
+        captured_coords = self.capture_map_coords()
+        try:
+            position, elevation = self.parse_map_coords_string(captured_coords)
+            self.update_position(position, elevation)
+            self.window.Element('capture_status').Update("Status: Captured")
+        except (IndexError, ValueError):
+            self.window.Element('capture_status').Update("Status: Failed to capture")
+        finally:
+            self.window.Element('quick_capture').Update(disabled=False)
+            self.window.Element('capture').Update(text="Capture from DCS F10 map")
+            self.window.Element('capture_status').Update("Status: Not capturing")
+
+        keyboard.remove_hotkey('ctrl+t')
+
+    def add_wp_parsed_coords(self):
+        captured_coords = self.capture_map_coords()
+        try:
+            position, elevation = self.parse_map_coords_string(captured_coords)
+        except (IndexError, ValueError):
+            return
+
+        if len(self.profile.missions) < 6 and self.values[1]:
+            try:
+                mission = MSN(position=position, elevation=elevation, number=len(self.profile.missions) + 1)
+                self.profile.missions.append(mission)
+                self.update_waypoints_list()
+            except ValueError:
+                PyGUI.Popup("Error: missing data or invalid data format")
+
+    def stop_quick_capture(self):
+        try:
+            keyboard.remove_hotkey('ctrl+t')
+        except KeyError:
+            pass
+
+        try:
+            keyboard.remove_hotkey('ctrl+r')
+        except KeyError:
+            pass
+        self.window.Element('capture').Update(text="Capture from DCS F10 map")
+        self.window.Element('quick_capture').Update(disabled=False)
+        self.window.Element('capture_status').Update("Status: Not capturing")
+        self.capturing = False
+
     def run(self):
         while True:
-            event, values = self.window.Read()
-            print(str(event))
-            print(str(values))
+            event, self.values = self.window.Read()
+            self.logger.debug(str(event))
+            self.logger.debug(str(self.values))
 
             if event is None or event == 'Exit':
                 break
@@ -216,7 +285,7 @@ class GUI:
                 elevation = self.window.Element("elevFeet").Get()
                 name = self.window.Element("msnName").Get()
 
-                if values[1] and len(self.profile.missions) < 6:
+                if self.values[1] and len(self.profile.missions) < 6:
 
                     try:
                         mission = MSN(LatLon(Latitude(degree=lat_deg, minute=lat_min, second=lat_sec),
@@ -229,7 +298,7 @@ class GUI:
                 elif event == "Add mission" and len(self.profile.missions) == 6:
                     PyGUI.Popup("Error: maximum number of missions reached", keep_on_top=True)
 
-                elif values[0]:
+                elif self.values[0]:
                     try:
                         waypoint = Wp(LatLon(Latitude(degree=lat_deg, minute=lat_min, second=lat_sec),
                                              Longitude(degree=lon_deg, minute=lon_min, second=lon_sec)),
@@ -241,14 +310,14 @@ class GUI:
                 self.update_waypoints_list()
 
             elif event == "Remove":
-                if not len(values['activesList']):
+                if not len(self.values['activesList']):
                     continue
-                ei = values['activesList'][0].find(' ')
+                ei = self.values['activesList'][0].find(' ')
 
                 if ei != -1:
-                    valuestr = values['activesList'][0][:ei]
+                    valuestr = self.values['activesList'][0][:ei]
                 else:
-                    valuestr = values['activesList'][0]
+                    valuestr = self.values['activesList'][0]
 
                 if "WP" in valuestr:
                     i = int(valuestr[2:])
@@ -260,14 +329,14 @@ class GUI:
                 self.update_waypoints_list()
 
             elif event == "activesList":
-                if not len(values['activesList']):
+                if not len(self.values['activesList']):
                     continue
-                ei = values['activesList'][0].find(' ')
+                ei = self.values['activesList'][0].find(' ')
 
                 if ei != -1:
-                    valuestr = values['activesList'][0][:ei]
+                    valuestr = self.values['activesList'][0][:ei]
                 else:
-                    valuestr = values['activesList'][0]
+                    valuestr = self.values['activesList'][0]
 
                 if "WP" in valuestr:
                     i = int(valuestr[2:])
@@ -297,16 +366,27 @@ class GUI:
 
             elif event == "profileSelector":
                 try:
-                    self.profile = self.editor.get_profile(values['profileSelector'])
+                    self.profile = self.editor.get_profile(self.values['profileSelector'])
                     self.update_waypoints_list()
+                    try:
+                        first_waypoint = [*self.profile.waypoints, *self.profile.missions][0]
+                        self.update_position(first_waypoint.position, first_waypoint.elevation, first_waypoint.name)
+                    except IndexError:
+                        self.update_position()
+
                 except DoesNotExist:
                     PyGUI.Popup("Profile not found")
 
             elif event == "Export to file":
                 e = dict(missions=[mission.to_dict() for mission in self.profile.missions],
-                         waypoints=[waypoint.to_dict() for waypoint in self.profile.waypoints])
+                         waypoints=[waypoint.to_dict() for waypoint in self.profile.waypoints],
+                         name=self.profile.profilename, aircraft=self.profile.aircraft)
 
-                filename = PyGUI.PopupGetText("Enter file name", "Exporting profile")
+                filename = PyGUI.PopupGetFile("Enter file name", "Exporting profile", default_extension=".json",
+                                              save_as=True, file_types=(("JSON File", "*.json"),))
+
+                if filename is None:
+                    continue
 
                 with open(filename + ".json", "w+") as f:
                     json.dump(e, f, indent=4)
@@ -320,6 +400,8 @@ class GUI:
                 with open(filename, "r") as f:
                     d = json.load(f)
 
+                self.profile = self.editor.get_profile(d.get('name', str()))
+                self.profile.aircraft = d.get('aircraft')
                 self.profile.missions = [MSN(position=LatLon(Latitude(mission['latitude']),
                                                              Longitude(mission['longitude'])),
                                              name=mission['name'], elevation=mission['elevation'],
@@ -355,25 +437,29 @@ class GUI:
                 webbrowser.open(directory + "\\map.html")
 
             elif event == "capture":
-                self.window.Element('capture').Update(disabled=True)
-                self.window.Element('capture_status').Update("Status: Capturing...")
-                self.window.Refresh()
-                keyboard.add_hotkey("ctrl+t", self.capture_map_coords, timeout=1)
-                keyboard.wait("ctrl+t")
 
-                try:
-                    position, elevation = self.parse_map_coords_string(self.captured_map_coords)
-                    self.update_position(position, elevation)
-                    self.window.Element('capture_status').Update("Status: Captured")
-                except (IndexError, ValueError):
-                    self.captured_map_coords = str()
-                    self.window.Element('capture_status').Update("Status: Failed to capture")
-                    continue
-                finally:
-                    self.window.Element('capture').Update(disabled=False)
+                if not self.capturing:
+                    self.window.Element('capture').Update(text="Stop capturing")
+                    self.window.Element('quick_capture').Update(disabled=True)
+                    self.window.Element('capture_status').Update("Status: Capturing...")
+                    self.window.Refresh()
+                    keyboard.add_hotkey("ctrl+t", self.input_parsed_coords, timeout=1)
+                    self.capturing = True
+                else:
+                    self.stop_quick_capture()
+
+            elif event == "quick_capture":
+                self.exit_quick_capture = False
+                self.window.Element('capture').Update(text="Stop capturing")
+                self.window.Element('quick_capture').Update(disabled=True)
+                self.window.Element('capture_status').Update("Status: Capturing...")
+                self.capturing = True
+                self.window.Refresh()
+                keyboard.add_hotkey("ctrl+t", self.add_wp_parsed_coords, timeout=1)
+                keyboard.add_hotkey("ctrl+r", self.stop_quick_capture, timeout=1)
 
             elif event == "baseSelector":
-                base = self.editor.default_bases.get(values['baseSelector'])
+                base = self.editor.default_bases.get(self.values['baseSelector'])
 
                 if base is not None:
                     self.update_position(base.position, base.elev, base.name)
