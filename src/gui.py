@@ -223,7 +223,7 @@ class GUI:
         image = ImageGrab.grab((101, 5, 101 + 269, 5 + 27))
         enhancer = ImageEnhance.Contrast(image)
         captured_map_coords = pytesseract.image_to_string(ImageOps.invert(enhancer.enhance(3)))
-        self.logger.debug("Raw captured text: " + captured_map_coords)
+        self.logger.info("Raw captured text: " + captured_map_coords)
         return captured_map_coords
 
     def parse_map_coords_string(self, coords_string):
@@ -242,6 +242,7 @@ class GUI:
             raise ValueError("Unable to parse elevation: " + elevation)
 
         self.captured_map_coords = str()
+        self.logger.info("Parsed captured text: " + str(position))
         return position, elevation
 
     def input_parsed_coords(self):
@@ -252,7 +253,7 @@ class GUI:
             self.window.Element('capture_status').Update("Status: Captured")
             self.logger.debug("Parsed text as coords succesfully: " + str(position))
         except (IndexError, ValueError):
-            self.logger.debug("Failed to parse captured text", exc_info=True)
+            self.logger.error("Failed to parse captured text", exc_info=True)
             self.window.Element('capture_status').Update("Status: Failed to capture")
         finally:
             self.window.Element('quick_capture').Update(disabled=False)
@@ -270,12 +271,9 @@ class GUI:
             return
 
         if len(self.profile.missions) < 6 and self.values[1]:
-            try:
-                mission = MSN(position=position, elevation=elevation, number=len(self.profile.missions) + 1)
-                self.profile.missions.append(mission)
-                self.update_waypoints_list()
-            except ValueError:
-                PyGUI.Popup("Error: missing data or invalid data format")
+            self.add_waypoint("MSN", position, elevation)
+        elif self.values[0]:
+            self.add_waypoint("WP", position, elevation)
 
     def stop_quick_capture(self):
         try:
