@@ -5,6 +5,7 @@ db = SqliteDatabase(None, pragmas={'foreign_keys': 1})
 
 class ProfileModel(Model):
     name = CharField(unique=True)
+    aircraft = CharField()
 
     class Meta:
         database = db
