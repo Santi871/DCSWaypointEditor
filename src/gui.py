@@ -1,7 +1,7 @@
 import PySimpleGUI as PyGUI
 from peewee import DoesNotExist
-from objects import MSN, Wp
-from logger import get_logger
+from src.objects import MSN, Wp
+from src.logger import get_logger
 from LatLon23 import LatLon, Longitude, Latitude, string2latlon
 import json
 import folium

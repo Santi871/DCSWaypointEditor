@@ -1,6 +1,6 @@
-from models import ProfileModel, MissionModel, WaypointModel, db
-from objects import MSN, Wp
-from logger import get_logger
+from src.models import ProfileModel, MissionModel, WaypointModel, db
+from src.objects import MSN, Wp
+from src.logger import get_logger
 from LatLon23 import LatLon, Latitude, Longitude
 
 
