@@ -40,6 +40,7 @@ class Wp:
     position: Any
     elevation: float = 0
     name: str = ""
+    sequence: int = 0
 
     def __post_init__(self):
         if type(self.position) == str:
@@ -71,16 +72,54 @@ class MSN:
     position: LatLon
     elevation: float
     name: str = ""
-    number: int = 0
 
     def to_dict(self):
         d = dict(
             latitude=self.position.lat.decimal_degree,
             longitude=self.position.lon.decimal_degree,
             elevation=self.elevation,
-            name=self.name,
-            number=self.number
+            name=self.name
         )
+        return d
+
+
+class Profile:
+    def __init__(self, profilename, db_interface, aircraft=None):
+        self.profilename = profilename
+        self.db_interface = db_interface
+        self.aircraft = aircraft
+
+        if profilename:
+            self.missions, self.waypoints, self.sequences = self.db_interface.get_profile(profilename)
+        else:
+            self.missions, self.waypoints, self.sequences = list(), list(), list()
+
+        self.sequences.sort()
+
+    def save(self, profilename=None):
+        if not self.waypoints and not self.missions:
+            return
+
+        if profilename is not None:
+            self.profilename = profilename
+
+        if profilename:
+            self.db_interface.save_profile(self)
+            self.profilename = profilename
+
+    def delete(self):
+        self.db_interface.delete_profile(self.profilename)
+
+    @property
+    def sequences_dict(self):
+        d = dict()
+        for sequence_identifier in self.sequences:
+            for i, wp in enumerate(self.waypoints):
+                if wp.sequence == sequence_identifier:
+                    wp_list = d.get(sequence_identifier, list())
+                    wp_list.append(i+1)
+                    d[sequence_identifier] = wp_list
+
         return d
 
 

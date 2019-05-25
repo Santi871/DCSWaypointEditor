@@ -1,8 +1,8 @@
 import keyboard
 from time import sleep
 from src.keybinds import BindsManager
-from src.objects import default_bases
-from src.db import DatabaseInterface, ProfileModel
+from src.objects import default_bases, Profile
+from src.db import DatabaseInterface
 from src.logger import get_logger
 
 
@@ -39,32 +39,6 @@ def latlon_tostring(latlong):
     return lat_deg + lat_min + lat_sec, lon_deg + lon_min + lon_sec
 
 
-class Profile:
-    def __init__(self, profilename, db_interface, aircraft=None):
-        self.profilename = profilename
-        self.db_interface = db_interface
-        self.aircraft = aircraft
-
-        if profilename:
-            self.missions, self.waypoints = self.db_interface.get_profile(profilename)
-        else:
-            self.missions, self.waypoints = list(), list()
-
-    def save(self, profilename=None):
-        if not self.waypoints and not self.missions:
-            return
-
-        if profilename is not None:
-            self.profilename = profilename
-
-        if profilename:
-            self.db_interface.save_profile(self)
-            self.profilename = profilename
-
-    def delete(self):
-        self.db_interface.delete_profile(self.profilename)
-
-
 class KeybindsInput:
 
     def __init__(self, settings):
@@ -83,11 +57,11 @@ class KeybindsInput:
 
         i = str(number).find(".")
 
-        if i > 0 and str(number)[i + 1] != "0":
-            for num in str(number)[str(number).find(".") + 1:]:
-                press_with_delay(self.binds_manager.ufc(num))
-
         if two_enters:
+            if i > 0 and str(number)[i + 1] != "0":
+                for num in str(number)[str(number).find(".") + 1:]:
+                    press_with_delay(self.binds_manager.ufc(num))
+
             press_with_delay(self.binds_manager.ufc("ENT"), delay_release=0.5)
 
     def enter_coords(self, latlong, elev, pp):
@@ -118,7 +92,7 @@ class KeybindsInput:
                 press_with_delay(self.binds_manager.ufc("2"), delay_release=0.5)
             else:
                 press_with_delay(self.binds_manager.ufc("8"), delay_release=0.5)
-            self.enter_number(lat_str, two_enters=True)
+            self.enter_number(lat_str, two_enters=False)
 
             press_with_delay(self.binds_manager.ufc("OSB3"))
 
@@ -138,7 +112,7 @@ class KeybindsInput:
                 elev = round(float(elev) / 3.2808)
                 self.enter_number(elev)
 
-    def enter_waypoints(self, wps):
+    def enter_waypoints(self, wps, sequences):
         if not wps:
             return
 
@@ -148,7 +122,6 @@ class KeybindsInput:
         press_with_delay(self.binds_manager.ufc("CLR"))
 
         for wp in wps:
-
             if not wp.name:
                 self.logger.info(f"Entering waypoint {i}")
             else:
@@ -161,8 +134,23 @@ class KeybindsInput:
             press_with_delay(self.binds_manager.ufc("CLR"))
 
             i += 1
-            sleep(1)
 
+        for sequencenumber, waypointslist in sequences.items():
+            if sequencenumber != 1:
+                press_with_delay(self.binds_manager.ampcd("15"))
+                press_with_delay(self.binds_manager.ampcd("15"))
+            else:
+                waypointslist = [0] + waypointslist
+
+            press_with_delay(self.binds_manager.ampcd("1"))
+
+            for waypoint in waypointslist:
+                press_with_delay(self.binds_manager.ufc("OSB4"))
+                press_with_delay(self.binds_manager.ufc(waypoint))
+                press_with_delay(self.binds_manager.ufc("ENT"))
+
+        press_with_delay(self.binds_manager.ufc("CLR"))
+        press_with_delay(self.binds_manager.ufc("CLR"))
         press_with_delay(self.binds_manager.ufc("CLR"))
         press_with_delay(self.binds_manager.ampcd("10"))
 
@@ -225,8 +213,8 @@ class WaypointEditor:
     def enter_coords(self, latlong, elev, pp):
         self.handler.enter_coords(latlong, elev, pp)
 
-    def enter_waypoints(self, wps):
-        self.handler.enter_waypoints(wps)
+    def enter_waypoints(self, wps, sequences):
+        self.handler.enter_waypoints(wps, sequences)
 
     def enter_pp_msn(self, msn, n):
         self.handler.enter_pp_msn(msn, n)
@@ -234,9 +222,8 @@ class WaypointEditor:
     def enter_missions(self, msns):
         self.handler.enter_missions(msns)
 
-    def enter_all(self, msns, wps):
+    def enter_all(self, profile):
         sleep(int(self.settings['PREFERENCES'].get('Grace_Period', 5)))
-        self.handler.enter_missions(msns)
+        self.handler.enter_missions(profile.missions)
         sleep(1)
-        self.handler.enter_waypoints(wps)
-
+        self.handler.enter_waypoints(profile.waypoints, profile.sequences_dict)

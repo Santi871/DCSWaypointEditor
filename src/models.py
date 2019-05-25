@@ -11,8 +11,15 @@ class ProfileModel(Model):
         database = db
 
 
+class SequenceModel(Model):
+    identifier = IntegerField()
+    profile = ForeignKeyField(ProfileModel, backref='sequences')
+
+    class Meta:
+        database = db
+
+
 class MissionModel(Model):
-    number = IntegerField()
     name = CharField(null=True, default="")
     latitude = FloatField()
     longitude = FloatField()
@@ -29,6 +36,7 @@ class WaypointModel(Model):
     longitude = FloatField()
     elevation = FloatField()
     profile = ForeignKeyField(ProfileModel, backref='waypoints')
+    sequence = ForeignKeyField(SequenceModel, backref='waypoints', null=True)
 
     class Meta:
         database = db

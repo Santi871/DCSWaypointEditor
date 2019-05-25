@@ -81,13 +81,17 @@ class GUI:
         ]
 
         framewptypelayout = [
-            [PyGUI.Radio("WP", group_id="wp_type", default=True, enable_events=True),
-             PyGUI.Radio("MSN", group_id="wp_type", enable_events=True),
+            [PyGUI.Radio("WP", group_id="wp_type", default=True, enable_events=True, key="WP"),
+             PyGUI.Radio("MSN", group_id="wp_type", enable_events=True, key="MSN"),
              PyGUI.Radio("FP", group_id="wp_type", disabled=True), PyGUI.Radio("ST", group_id="wp_type",
                                                                                disabled=True)],
             [PyGUI.Radio("IP", group_id="wp_type", disabled=True), PyGUI.Radio("DP", group_id="wp_type", disabled=True),
-             PyGUI.Radio("HA", group_id="wp_type", disabled=True), PyGUI.Button("Quick Capture", disabled=False,
-                                                                                key="quick_capture", pad=(5, (3, 8)))],
+             PyGUI.Radio("HA", group_id="wp_type", disabled=True)],
+            [PyGUI.Button("Quick Capture", disabled=False, key="quick_capture", pad=(5, (3, 8))),
+             PyGUI.Text("Sequence:", pad=((0, 1), 3)),
+             PyGUI.Combo(values=("None", 1, 2, 3), default_value="None",
+                         auto_size_text=False, size=(5, 1), readonly=True,
+                         key="sequence")]
         ]
 
         framelongitude = PyGUI.Frame("Longitude", [[PyGUI.Column(longitude_col1), PyGUI.Column(longitude_col2),
@@ -194,8 +198,12 @@ class GUI:
         i = 1
         for waypoint in self.profile.waypoints:
             namestr = f"WP{i}"
+            if waypoint.sequence:
+                namestr += f" | SEQ{waypoint.sequence}"
+
             if waypoint.name:
                 namestr += f" | {waypoint.name}"
+
             values.append(namestr)
             i += 1
 
@@ -209,14 +217,24 @@ class GUI:
             name = str()
 
         try:
-            if self.values[1] and len(self.profile.missions) < max_missions:
-                mission = MSN(position=position, elevation=int(elevation) or 0, number=len(self.profile.missions) + 1)
+            if self.values["MSN"] and len(self.profile.missions) < max_missions:
+                mission = MSN(position=position, elevation=int(elevation) or 0)
                 self.profile.missions.append(mission)
                 wpadded = True
 
-            elif self.values[0]:
-                waypoint = Wp(position, elevation=int(elevation or 0), name=name)
+            elif self.values["WP"]:
+                sequence = self.values["sequence"]
+                if sequence == "None":
+                    sequence = 0
+                else:
+                    sequence = int(sequence)
+
+                waypoint = Wp(position, elevation=int(elevation or 0), name=name, sequence=sequence)
                 self.profile.waypoints.append(waypoint)
+
+                if sequence not in self.profile.sequences:
+                    self.profile.sequences.append(sequence)
+
                 wpadded = True
 
             if wpadded:
@@ -350,6 +368,7 @@ class GUI:
                 if "WP" in valuestr:
                     i = int(valuestr[2:])
                     mission = self.profile.waypoints[i - 1]
+
                 else:
                     i = int(valuestr[3:])
                     mission = self.profile.missions[i - 1]
@@ -413,14 +432,15 @@ class GUI:
                 self.profile.aircraft = d.get('aircraft')
                 self.profile.missions = [MSN(position=LatLon(Latitude(mission['latitude']),
                                                              Longitude(mission['longitude'])),
-                                             name=mission['name'], elevation=mission['elevation'],
-                                             number=mission['number']) for mission in d.get('missions', list())]
+                                             name=mission['name'], elevation=mission['elevation'])
+                                         for mission in d.get('missions', list())]
                 self.profile.waypoints = [
                     Wp(position=LatLon(Latitude(waypoint['latitude']), Longitude(waypoint['longitude'])),
                        name=waypoint['name'],
                        elevation=waypoint['elevation']) for waypoint in d.get('waypoints', list())]
 
                 self.update_waypoints_list()
+
             elif event == "map":
                 if not self.profile.waypoints and not self.profile.missions:
                     continue
@@ -474,8 +494,14 @@ class GUI:
 
             elif event == "enter":
                 self.window.Element('enter').Update(disabled=True)
-                self.editor.enter_all(self.profile.missions, self.profile.waypoints)
+                self.editor.enter_all(self.profile)
                 self.window.Element('enter').Update(disabled=False)
+
+            elif event == "WP":
+                self.window.Element('sequence').Update(disabled=False)
+
+            elif event in ("MSN",):
+                self.window.Element('sequence').Update(disabled=True, set_to_index=0)
 
         try:
             keyboard.remove_hotkey('ctrl+t')
