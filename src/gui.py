@@ -205,11 +205,6 @@ class GUI:
         if name is None:
             name = str()
 
-        wptype = None
-
-        if wptype is None:
-            return
-
         try:
             if self.values[1] and len(self.profile.missions) < 6:
                 mission = MSN(position=position, elevation=int(elevation) or 0, number=len(self.profile.missions) + 1)
