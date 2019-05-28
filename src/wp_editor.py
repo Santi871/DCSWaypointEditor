@@ -1,16 +1,8 @@
-import keyboard
 from time import sleep
 from src.keybinds import BindsManager
 from src.objects import default_bases, Profile
 from src.db import DatabaseInterface
 from src.logger import get_logger
-
-
-def press_with_delay(key, delay_after=0.2, delay_release=0.2):
-    keyboard.press(key)
-    sleep(delay_release)
-    keyboard.release(key)
-    sleep(delay_after)
 
 
 def latlon_tostring(latlong):
@@ -44,71 +36,70 @@ class KeybindsInput:
     def __init__(self, settings):
         self.logger = get_logger("keybinds_input")
         self.settings = settings
-        self.binds_manager = BindsManager(self.logger, settings['PREFERENCES'])
+        self.press = BindsManager("dcs-bios", self.logger, settings['PREFERENCES'])
 
     def enter_number(self, number, two_enters=False):
         for num in str(number):
             if num == ".":
                 break
 
-            press_with_delay(self.binds_manager.ufc(num))
+            self.press.ufc(num)
 
-        press_with_delay(self.binds_manager.ufc("ENT"), delay_release=0.5)
+        self.press.ufc("ENT", delay_release=0.5)
 
         i = str(number).find(".")
 
         if two_enters:
             if i > 0 and str(number)[i + 1] != "0":
                 for num in str(number)[str(number).find(".") + 1:]:
-                    press_with_delay(self.binds_manager.ufc(num))
+                    self.press.ufc(num)
 
-            press_with_delay(self.binds_manager.ufc("ENT"), delay_release=0.5)
+            self.press.ufc("ENT", delay_release=0.5)
 
     def enter_coords(self, latlong, elev, pp):
         lat_str, lon_str = latlon_tostring(latlong)
 
         if not pp:
             if latlong.lat.degree > 0:
-                press_with_delay(self.binds_manager.ufc("2"), delay_release=0.5)
+                self.press.ufc("2", delay_release=0.5)
             else:
-                press_with_delay(self.binds_manager.ufc("8"), delay_release=0.5)
+                self.press.ufc("8", delay_release=0.5)
             self.enter_number(lat_str)
             sleep(0.5)
 
             if latlong.lon.degree > 0:
-                press_with_delay(self.binds_manager.ufc("6"), delay_release=0.5)
+                self.press.ufc("6", delay_release=0.5)
             else:
-                press_with_delay(self.binds_manager.ufc("4"), delay_release=0.5)
+                self.press.ufc("4", delay_release=0.5)
             self.enter_number(lon_str)
 
             if elev:
-                press_with_delay(self.binds_manager.ufc("OSB3"))
-                press_with_delay(self.binds_manager.ufc("OSB1"))
-                # press_with_delay(self.binds_manager.ufc("OSB3"))
+                self.press.ufc("OSB3")
+                self.press.ufc("OSB1")
                 self.enter_number(elev)
         else:
-            press_with_delay(self.binds_manager.ufc("OSB1"))
+            self.press.ufc("OSB1")
             if latlong.lat.degree > 0:
-                press_with_delay(self.binds_manager.ufc("2"), delay_release=0.5)
+                self.press.ufc("2", delay_release=0.5)
             else:
-                press_with_delay(self.binds_manager.ufc("8"), delay_release=0.5)
+                self.press.ufc("8", delay_release=0.5)
             self.enter_number(lat_str, two_enters=False)
 
-            press_with_delay(self.binds_manager.ufc("OSB3"))
+            self.press.ufc("OSB3")
 
             if latlong.lon.degree > 0:
-                press_with_delay(self.binds_manager.ufc("6"), delay_release=0.5)
+                self.press.ufc("6", delay_release=0.5)
             else:
-                press_with_delay(self.binds_manager.ufc("4"), delay_release=0.5)
+                self.press.ufc("4", delay_release=0.5)
 
             self.enter_number(lon_str, two_enters=True)
 
-            press_with_delay(self.binds_manager.lmdi("14"))
-            press_with_delay(self.binds_manager.lmdi("14"))
+            self.press.lmdi("14")
+            self.press.lmdi("14")
 
             if elev:
-                press_with_delay(self.binds_manager.ufc("OSB4"))
-                press_with_delay(self.binds_manager.ufc("OSB4"))
+                self.press.ufc("OSB4")
+                self.press.ufc("OSB4")
                 elev = round(float(elev) / 3.2808)
                 self.enter_number(elev)
 
@@ -117,9 +108,9 @@ class KeybindsInput:
             return
 
         i = 1
-        press_with_delay(self.binds_manager.ampcd("10"))
-        press_with_delay(self.binds_manager.ufc("CLR"))
-        press_with_delay(self.binds_manager.ufc("CLR"))
+        self.press.ampcd("10")
+        self.press.ufc("CLR")
+        self.press.ufc("CLR")
 
         for wp in wps:
             if not wp.name:
@@ -127,32 +118,32 @@ class KeybindsInput:
             else:
                 self.logger.info(f"Entering waypoint {i} - {wp.name}")
 
-            press_with_delay(self.binds_manager.ampcd("12"))
-            press_with_delay(self.binds_manager.ampcd("5"))
-            press_with_delay(self.binds_manager.ufc("OSB1"))
+            self.press.ampcd("12")
+            self.press.ampcd("5")
+            self.press.ufc("OSB1")
             self.enter_coords(wp.position, wp.elevation, pp=False)
-            press_with_delay(self.binds_manager.ufc("CLR"))
+            self.press.ufc("CLR")
 
             i += 1
 
         for sequencenumber, waypointslist in sequences.items():
             if sequencenumber != 1:
-                press_with_delay(self.binds_manager.ampcd("15"))
-                press_with_delay(self.binds_manager.ampcd("15"))
+                self.press.ampcd("15")
+                self.press.ampcd("15")
             else:
                 waypointslist = [0] + waypointslist
 
-            press_with_delay(self.binds_manager.ampcd("1"))
+            self.press.ampcd("1")
 
             for waypoint in waypointslist:
-                press_with_delay(self.binds_manager.ufc("OSB4"))
-                press_with_delay(self.binds_manager.ufc(waypoint))
-                press_with_delay(self.binds_manager.ufc("ENT"))
+                self.press.ufc("OSB4")
+                self.press.ufc(waypoint)
+                self.press.ufc("ENT")
 
-        press_with_delay(self.binds_manager.ufc("CLR"))
-        press_with_delay(self.binds_manager.ufc("CLR"))
-        press_with_delay(self.binds_manager.ufc("CLR"))
-        press_with_delay(self.binds_manager.ampcd("10"))
+        self.press.ufc("CLR")
+        self.press.ufc("CLR")
+        self.press.ufc("CLR")
+        self.press.ampcd("10")
 
     def enter_pp_msn(self, msn, n):
         if msn.name:
@@ -160,30 +151,30 @@ class KeybindsInput:
         else:
             self.logger.info(f"Entering PP mission {n}")
 
-        press_with_delay(self.binds_manager.lmdi(f"{n + 5}"))
-        press_with_delay(self.binds_manager.lmdi("14"))
-        press_with_delay(self.binds_manager.ufc("OSB3"))
+        self.press.lmdi(f"{n + 5}")
+        self.press.lmdi("14")
+        self.press.ufc("OSB3")
 
         self.enter_coords(msn.position, msn.elevation, pp=True)
 
-        press_with_delay(self.binds_manager.ufc("CLR"))
-        press_with_delay(self.binds_manager.ufc("CLR"))
+        self.press.ufc("CLR")
+        self.press.ufc("CLR")
 
     def enter_missions(self, msns):
         if not msns:
             return
 
-        press_with_delay(self.binds_manager.lmdi("11"))
-        press_with_delay(self.binds_manager.lmdi("4"))
+        self.press.lmdi("11")
+        self.press.lmdi("4")
 
         n = 1
         for msn in msns:
             self.enter_pp_msn(msn, n)
             n += 1
 
-        press_with_delay(self.binds_manager.lmdi("6"))
-        press_with_delay(self.binds_manager.lmdi("19"))
-        press_with_delay(self.binds_manager.lmdi("6"))
+        self.press.lmdi("6")
+        self.press.lmdi("19")
+        self.press.lmdi("6")
 
 
 class WaypointEditor:

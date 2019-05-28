@@ -1,5 +1,8 @@
 from pathlib import Path
 from slpp import slpp as lua
+import keyboard
+from time import sleep
+import socket
 
 
 reformers = {
@@ -22,13 +25,10 @@ def parse_reformers(bind):
     return bindstr
 
 
-def parse_dcs_binds(using_openbeta):
+def parse_dcs_binds(dcs_path):
     parsed_binds = dict()
 
-    if using_openbeta:
-        dcs_path = f"{str(Path.home())}\\Saved Games\\DCS.openbeta\\Config\\Input\\FA-18C_hornet\\keyboard"
-    else:
-        dcs_path = f"{str(Path.home())}\\Saved Games\\DCS\\Config\\Input\\FA-18C_hornet\\keyboard"
+    dcs_path = f"{dcs_path}\\Config\\Input\\FA-18C_hornet\\keyboard"
 
     with open(dcs_path + "\\Keyboard.diff.lua", mode="r") as f:
         c = f.read()
@@ -66,10 +66,35 @@ class BindError(Exception):
     pass
 
 
+class BindsPresser:
+    def __init__(self):
+        self.s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.host, self.port = '127.0.0.1', 7778
+
+    def press_with_delay(self, key, delay_after=0.2, delay_release=0.2, use_socket=False):
+        if not key:
+            return
+
+        if not use_socket:
+            keyboard.press(key)
+        else:
+            self.s.sendto(f"{key} 1\n".replace("OSB", "OS").encode("utf-8"), (self.host, self.port))
+
+        sleep(delay_release)
+        if not use_socket:
+            keyboard.release(key)
+        else:
+            self.s.sendto(f"{key} 0\n".replace("OSB", "OS").encode("utf-8"), (self.host, self.port))
+
+        sleep(delay_after)
+
+
 class BindsManager:
-    def __init__(self, logger, preferences):
+    def __init__(self, mode, logger, preferences):
+        self.mode = mode
         self.logger = logger
-        self.binds_dict = parse_dcs_binds(preferences.getboolean('Using_OpenBeta'))
+        self.binds_dict = parse_dcs_binds(preferences.get("dcs_path"))
+        self.p = BindsPresser()
 
     def get_bind(self, bindname):
         bind = self.binds_dict.get(bindname)
@@ -78,11 +103,39 @@ class BindsManager:
             raise BindError(f"Bind {bindname} is undefined")
         return bind
 
-    def ufc(self, num):
-        return self.get_bind(f"UFC_{num}")
+    def ufc(self, num, delay_after=0.2, delay_release=0.2):
+        key = str()
+        use_socket = False
 
-    def lmdi(self, pb):
-        return self.get_bind(f"LMDI_PB{pb}")
+        if self.mode == "keyboard":
+            key = self.get_bind(f"UFC_{num}")
+        elif self.mode == "dcs-bios":
+            key = f"UFC_{num}"
+            use_socket = True
 
-    def ampcd(self, pb):
-        return self.get_bind(f"AMPCD_PB{pb}")
+        self.p.press_with_delay(key, delay_after=delay_after, delay_release=delay_release, use_socket=use_socket)
+
+    def lmdi(self, pb, delay_after=0.2, delay_release=0.2):
+        key = str()
+        use_socket = False
+
+        if self.mode == "keyboard":
+            key = self.get_bind(f"LMDI_PB{pb}")
+        elif self.mode == "dcs-bios":
+            key = f"LEFT_DDI_PB_{pb.zfill(2)}"
+            use_socket = True
+
+        self.p.press_with_delay(key, delay_after=delay_after, delay_release=delay_release, use_socket=use_socket)
+
+    def ampcd(self, pb, delay_after=0.2, delay_release=0.2):
+        key = str()
+        use_socket = False
+
+        if self.mode == "keyboard":
+            key = self.get_bind(f"AMPCD_PB{pb}")
+
+        elif self.mode == "dcs-bios":
+            key = f"AMPCD_PB_{pb.zfill(2)}"
+            use_socket = True
+
+        self.p.press_with_delay(key, delay_after=delay_after, delay_release=delay_release, use_socket=use_socket)
