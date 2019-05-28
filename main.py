@@ -1,29 +1,53 @@
 from configparser import ConfigParser
-from src.logger import get_logger
+from src.logger import get_logger, log_settings
 from src.wp_editor import WaypointEditor
-from src.gui import GUI
-import socket
-from time import sleep, time
+from src.gui import GUI, first_time_setup_gui
+from pyproj import datadir, _datadir
 
 
-HOST = '127.0.0.1'  # Standard loopback interface address (localhost)
-PORT = 7778        # Port to listen on (non-privileged ports are > 1023)
+def first_time_setup():
+    gui = first_time_setup_gui()
+
+    while True:
+        event, values = gui.Show()
+
+        if event is None:
+            return False
+        elif event == "Install":
+
+            gui.Element("Accept").Update(disabled=False)
+            break
+
+    config = ConfigParser()
+    config.add_section("PREFERENCES")
+    config.set("PREFERENCES", "Grace_Period", "5")
+    config.set("PREFERENCES", "Tesseract_Path", values["tesseract_path"])
+    config.set("PREFERENCES", "DCS_Path", values["dcs_path"])
+    config.set("PREFERENCES", "DB_Name", "profiles.db")
+
+    with open("settings.ini", "w+") as f:
+        config.write(f)
+
+    return True
 
 
-def main(config):
-    '''
-    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
-        while True:
-            s.sendto(b"UFC_1 1\n", (HOST, PORT))
-            sleep(1)
-            s.sendto(b"UFC_1 0\n", (HOST, PORT))
-            sleep(1)
-    '''
+def main():
+    try:
+        open("settings.ini", "r").close()
+        first_time = False
+    except FileNotFoundError:
+        first_time = True
 
-    editor = WaypointEditor(config)
+    setup_results = not first_time or first_time_setup()
 
-    gui = GUI(editor)
-    gui.run()
+    if setup_results:
+        log_settings()
+        settings = ConfigParser()
+        settings.read("settings.ini")
+        editor = WaypointEditor(settings)
+
+        gui = GUI(editor)
+        gui.run()
 
 
 if __name__ == "__main__":
@@ -31,9 +55,7 @@ if __name__ == "__main__":
     logger.info("Initializing")
 
     try:
-        settings = ConfigParser()
-        settings.read("settings.ini")
-        main(settings)
+        main()
     except Exception as e:
         logger.error("Exception occurred", exc_info=True)
         raise e

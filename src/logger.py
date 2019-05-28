@@ -2,12 +2,13 @@ import logging
 from sys import stdout
 
 
-with open("log.txt", "w+") as f:
-    f.write("\n\n----settings.ini----\n\n")
-    with open("settings.ini", "r") as f2:
-        f.writelines(f2.readlines())
+def log_settings():
+    with open("log.txt", "w+") as f:
+        f.write("----settings.ini----\n\n")
+        with open("settings.ini", "r") as f2:
+            f.writelines(f2.readlines())
 
-    f.write("\n\n--------------------\n\n")
+        f.write("\n\n--------------------\n\n")
 
 
 def get_logger(name):

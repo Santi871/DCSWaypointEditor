@@ -4,12 +4,40 @@ from src.objects import MSN, Wp
 from src.logger import get_logger
 from LatLon23 import LatLon, Longitude, Latitude, string2latlon
 import json
-import folium
-import webbrowser
-import os
 from PIL import ImageGrab, ImageEnhance, ImageOps
 import pytesseract
 import keyboard
+from pathlib import Path
+import os
+
+
+def first_time_setup_gui():
+    default_dcs_path = f"{str(Path.home())}\\Saved Games\\DCS.openbeta\\"
+    dcs_bios_detected = "Not detected"
+
+    try:
+        with open(default_dcs_path + "\\Scripts\\Export.lua", "r") as f:
+            if r"dofile(lfs.writedir()..[[Scripts\DCS-BIOS\BIOS.lua]])" in f.read() and\
+                    os.path.exists(default_dcs_path + "\\Scripts\\DCS-BIOS"):
+                dcs_bios_detected = "Detected"
+    except FileNotFoundError:
+        pass
+
+    layout = [
+        [PyGUI.Text("DCS User Folder Path:"), PyGUI.Input(default_dcs_path, key="dcs_path"),
+         PyGUI.Button("Browse...", button_type=PyGUI.BUTTON_TYPE_BROWSE_FOLDER, target="dcs_path")],
+
+        [PyGUI.Text("Tesseract.exe Path:"), PyGUI.Input(f"{os.environ['PROGRAMW6432']}\\Tesseract-OCR\\tesseract.exe",
+                                                        key="tesseract_path"),
+         PyGUI.Button("Browse...", button_type=PyGUI.BUTTON_TYPE_BROWSE_FILE, target="tesseract_path")],
+
+        [PyGUI.Text("DCS-BIOS:"), PyGUI.Text(dcs_bios_detected, key="dcs_bios"),
+         PyGUI.Button("Install", disabled=dcs_bios_detected == "Detected")],
+    ]
+
+    return PyGUI.Window("First time setup", [[PyGUI.Frame("Settings", layout)],
+                                             [PyGUI.Button("Accept", pad=((250, 1), 1),
+                                                           disabled=dcs_bios_detected != "Detected")]])
 
 
 class GUI:
@@ -131,7 +159,7 @@ class GUI:
                          enable_events=True, key='baseSelector')],
             [framedata, framewptype],
             [frameposition],
-            [PyGUI.Button("Open map in browser", key="map"), PyGUI.Button("Enter into AC", key="enter")],
+            [PyGUI.Button("Open map in browser", key="map", visible=False), PyGUI.Button("Enter into AC", key="enter")],
         ]
 
         colmain1 = [
@@ -229,6 +257,9 @@ class GUI:
                 else:
                     sequence = int(sequence)
 
+                if sequence and len(self.profile.get_sequence(sequence)) >= 15:
+                    return False
+
                 waypoint = Wp(position, elevation=int(elevation or 0), name=name, sequence=sequence)
                 self.profile.waypoints.append(waypoint)
 
@@ -318,6 +349,7 @@ class GUI:
             self.logger.debug("Values: " + str(self.values))
 
             if event is None or event == 'Exit':
+                self.logger.info("Exiting...")
                 break
 
             elif event == "Add":
@@ -440,10 +472,10 @@ class GUI:
                        elevation=waypoint['elevation'],
                        sequence=waypoint['sequence']) for waypoint in d.get('waypoints', list())]
 
-                self.profile.build_sequences()
                 self.update_waypoints_list()
 
             elif event == "map":
+                """
                 if not self.profile.waypoints and not self.profile.missions:
                     continue
 
@@ -453,7 +485,15 @@ class GUI:
                 lons = [waypoint.position.lon.degree for waypoint in self.profile.waypoints] + \
                        [mission.position.lon.degree for mission in self.profile.missions]
 
+                lines = list()
+                for wp in self.profile.waypoints:
+                    if wp.sequence:
+                        lines.append([wp.position.lat.decimal_degree, wp.position.lon.decimal_degree])
+
                 m = folium.Map(location=[(max(lats) + min(lats)) / 2, (max(lons) + min(lons)) / 2], zoom_start=6)
+
+                if lines:
+                    folium.PolyLine(lines).add_to(m)
 
                 for waypoint in self.profile.waypoints:
                     folium.Marker((waypoint.position.lat.decimal_degree, waypoint.position.lon.decimal_degree),
@@ -466,9 +506,9 @@ class GUI:
                 m.save("map.html")
                 directory = os.getcwd()
                 webbrowser.open(directory + "\\map.html")
+                """
 
             elif event == "capture":
-
                 if not self.capturing:
                     self.window.Element('capture').Update(text="Stop capturing")
                     self.window.Element('quick_capture').Update(disabled=True)
@@ -511,4 +551,5 @@ class GUI:
             pass
 
         self.editor.db.close()
+        self.editor.handler.press.p.s.close()
         exit(0)
