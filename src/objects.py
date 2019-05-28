@@ -95,16 +95,14 @@ class Profile:
         else:
             self.missions, self.waypoints = list(), list()
 
-        self.sequences = None
-        self.build_sequences()
-
-    def build_sequences(self):
-        self.sequences = set()
+    def update_sequences(self):
+        sequences = set()
         for waypoint in self.waypoints:
             if waypoint.sequence:
-                self.sequences.add(waypoint.sequence)
-        self.sequences = list(self.sequences)
-        self.sequences.sort()
+                sequences.add(waypoint.sequence)
+        sequences = list(sequences)
+        sequences.sort()
+        return sequences
 
     def save(self, profilename=None):
         if not self.waypoints and not self.missions:
@@ -121,6 +119,10 @@ class Profile:
         self.db_interface.delete_profile(self.profilename)
 
     @property
+    def sequences(self):
+        return self.update_sequences()
+
+    @property
     def sequences_dict(self):
         d = dict()
         for sequence_identifier in self.sequences:
@@ -131,6 +133,9 @@ class Profile:
                     d[sequence_identifier] = wp_list
 
         return d
+
+    def get_sequence(self, identifier):
+        return self.sequences_dict.get(identifier, list())
 
 
 update_base_data("https://raw.githubusercontent.com/Santi871/HornetWaypointEditor/master/data/"
