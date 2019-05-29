@@ -1,34 +1,10 @@
 from configparser import ConfigParser
 from src.logger import get_logger, log_settings
 from src.wp_editor import WaypointEditor
-from src.gui import GUI, first_time_setup_gui
+from src.gui import GUI, exception_gui
+from src.first_setup import first_time_setup
+import traceback
 from pyproj import datadir, _datadir
-
-
-def first_time_setup():
-    gui = first_time_setup_gui()
-
-    while True:
-        event, values = gui.Show()
-
-        if event is None:
-            return False
-        elif event == "Install":
-
-            gui.Element("Accept").Update(disabled=False)
-            break
-
-    config = ConfigParser()
-    config.add_section("PREFERENCES")
-    config.set("PREFERENCES", "Grace_Period", "5")
-    config.set("PREFERENCES", "Tesseract_Path", values["tesseract_path"])
-    config.set("PREFERENCES", "DCS_Path", values["dcs_path"])
-    config.set("PREFERENCES", "DB_Name", "profiles.db")
-
-    with open("settings.ini", "w+") as f:
-        config.write(f)
-
-    return True
 
 
 def main():
@@ -47,7 +23,12 @@ def main():
         editor = WaypointEditor(settings)
 
         gui = GUI(editor)
-        gui.run()
+
+        try:
+            gui.run()
+        except Exception:
+            gui.close()
+            raise
 
 
 if __name__ == "__main__":
@@ -58,6 +39,7 @@ if __name__ == "__main__":
         main()
     except Exception as e:
         logger.error("Exception occurred", exc_info=True)
-        raise e
+        exception_gui(traceback.format_exc())
+        raise
 
     logger.info("Finished")

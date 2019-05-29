@@ -11,25 +11,32 @@ from pathlib import Path
 import os
 
 
-def first_time_setup_gui():
-    default_dcs_path = f"{str(Path.home())}\\Saved Games\\DCS.openbeta\\"
+def detect_dcs_bios(default_dcs_path):
     dcs_bios_detected = "Not detected"
 
     try:
-        with open(default_dcs_path + "\\Scripts\\Export.lua", "r") as f:
-            if r"dofile(lfs.writedir()..[[Scripts\DCS-BIOS\BIOS.lua]])" in f.read() and\
+        with open(default_dcs_path + "Scripts\\Export.lua", "r") as f:
+            if r"dofile(lfs.writedir()..[[Scripts\DCS-BIOS\BIOS.lua]])" in f.read() and \
                     os.path.exists(default_dcs_path + "\\Scripts\\DCS-BIOS"):
                 dcs_bios_detected = "Detected"
     except FileNotFoundError:
         pass
+    return dcs_bios_detected
+
+
+def first_time_setup_gui():
+    default_dcs_path = f"{str(Path.home())}\\Saved Games\\DCS.openbeta\\"
+    default_tesseract_path = f"{os.environ['PROGRAMW6432']}\\Tesseract-OCR\\tesseract.exe"
+    dcs_bios_detected = detect_dcs_bios(default_dcs_path)
 
     layout = [
         [PyGUI.Text("DCS User Folder Path:"), PyGUI.Input(default_dcs_path, key="dcs_path"),
          PyGUI.Button("Browse...", button_type=PyGUI.BUTTON_TYPE_BROWSE_FOLDER, target="dcs_path")],
 
-        [PyGUI.Text("Tesseract.exe Path:"), PyGUI.Input(f"{os.environ['PROGRAMW6432']}\\Tesseract-OCR\\tesseract.exe",
-                                                        key="tesseract_path"),
+        [PyGUI.Text("Tesseract.exe Path:"), PyGUI.Input(default_tesseract_path, key="tesseract_path"),
          PyGUI.Button("Browse...", button_type=PyGUI.BUTTON_TYPE_BROWSE_FILE, target="tesseract_path")],
+
+        [PyGUI.Text("F10 Map Capture Key:"), PyGUI.Input("left ctrl+t", key="capture_key")],
 
         [PyGUI.Text("DCS-BIOS:"), PyGUI.Text(dcs_bios_detected, key="dcs_bios"),
          PyGUI.Button("Install", disabled=dcs_bios_detected == "Detected")],
@@ -38,6 +45,10 @@ def first_time_setup_gui():
     return PyGUI.Window("First time setup", [[PyGUI.Frame("Settings", layout)],
                                              [PyGUI.Button("Accept", pad=((250, 1), 1),
                                                            disabled=dcs_bios_detected != "Detected")]])
+
+
+def exception_gui(exc_info):
+    return PyGUI.PopupOK("An exception occured and the program terminated execution:\n\n" + exc_info)
 
 
 class GUI:
@@ -115,7 +126,7 @@ class GUI:
                                                                                disabled=True)],
             [PyGUI.Radio("IP", group_id="wp_type", disabled=True), PyGUI.Radio("DP", group_id="wp_type", disabled=True),
              PyGUI.Radio("HA", group_id="wp_type", disabled=True)],
-            [PyGUI.Button("Quick Capture", disabled=False, key="quick_capture", pad=(5, (3, 8))),
+            [PyGUI.Button("Quick Capture", disabled=self.capture_button_disabled, key="quick_capture", pad=(5, (3, 8))),
              PyGUI.Text("Sequence:", pad=((0, 1), 3)),
              PyGUI.Combo(values=("None", 1, 2, 3), default_value="None",
                          auto_size_text=False, size=(5, 1), readonly=True,
@@ -532,7 +543,7 @@ class GUI:
                 base = self.editor.default_bases.get(self.values['baseSelector'])
 
                 if base is not None:
-                    self.update_position(base.position, base.elev, base.name)
+                    self.update_position(base.position, base.elevation, base.name)
 
             elif event == "enter":
                 self.window.Element('enter').Update(disabled=True)
@@ -545,6 +556,9 @@ class GUI:
             elif event in ("MSN",):
                 self.window.Element('sequence').Update(disabled=True, set_to_index=0)
 
+            self.close()
+
+    def close(self):
         try:
             keyboard.remove_hotkey('ctrl+t')
         except KeyError:
@@ -552,4 +566,3 @@ class GUI:
 
         self.editor.db.close()
         self.editor.handler.press.p.s.close()
-        exit(0)

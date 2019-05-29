@@ -8,7 +8,7 @@ import urllib.request
 default_bases = dict()
 
 
-def update_base_data(url, filename):
+def create_base_data(url, filename):
     with urllib.request.urlopen(url) as response:
         html = response.read()
 
@@ -25,14 +25,7 @@ def load_base_data(basedata, basedict):
             lon = base.get('locationDetails').get('lon')
             elev = round(base.get('locationDetails').get('altitude'))
             position = LatLon(Latitude(degree=lat), Longitude(degree=lon))
-            basedict[name] = Base(name, position, elev)
-
-
-@dataclass
-class Base:
-    name: str
-    position: LatLon
-    elev: int
+            basedict[name] = Wp(position=position, name=name, elevation=elev)
 
 
 @dataclass
@@ -138,10 +131,10 @@ class Profile:
         return self.sequences_dict.get(identifier, list())
 
 
-update_base_data("https://raw.githubusercontent.com/Santi871/HornetWaypointEditor/master/data/"
+create_base_data("https://raw.githubusercontent.com/Santi871/HornetWaypointEditor/master/data/"
                  "pg.json?token=ACQW6PPI77ATCRJ2RZSDSBC44UAOG", "./data/pg.json")
 
-update_base_data("https://raw.githubusercontent.com/Santi871/HornetWaypointEditor/master/data/"
+create_base_data("https://raw.githubusercontent.com/Santi871/HornetWaypointEditor/master/data/"
                  "cauc.json?token=ACQW6PIVKSD72T7FLOBQHCC44W334", "./data/cauc.json")
 
 with open("./data/cauc.json", "r") as f:
