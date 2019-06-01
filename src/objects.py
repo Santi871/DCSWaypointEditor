@@ -3,29 +3,67 @@ from typing import Any
 from LatLon23 import LatLon, Longitude, Latitude
 import json
 import urllib.request
+from os import walk
+from src.logger import get_logger
 
 
 default_bases = dict()
 
 
-def create_base_data(url, filename):
+def update_base_data(url, file):
     with urllib.request.urlopen(url) as response:
-        html = response.read()
+        if response.code == 200:
+            html = response.read()
+        else:
+            return False
 
-    with open(filename, "w+") as f2:
+    with open(file, "w") as f2:
         f2.write(html.decode('utf-8'))
+    return True
 
 
 def load_base_data(basedata, basedict):
+    waypoints_list = basedata.get("waypoints")
+
+    if type(waypoints_list) == list:
+        basedata = {i: wp for i, wp in enumerate(waypoints_list)}
+
     for _, base in basedata.items():
         name = base.get('name')
 
         if name not in ("Stennis", "Kuznetsov", "Kuznetsov North", "Kuznetsov South"):
-            lat = base.get('locationDetails').get('lat')
-            lon = base.get('locationDetails').get('lon')
-            elev = round(base.get('locationDetails').get('altitude'))
+            lat = base.get("latitude") or base.get('locationDetails').get('lat')
+            lon = base.get("longitude") or base.get('locationDetails').get('lon')
+            elev = base.get("elevation")
+            if elev is None:
+                elev = base.get('locationDetails').get('altitude')
             position = LatLon(Latitude(degree=lat), Longitude(degree=lon))
             basedict[name] = Wp(position=position, name=name, elevation=elev)
+
+
+def generate_default_bases():
+    logger = get_logger("default_bases_builder")
+
+    pgdata = update_base_data("https://raw.githubusercontent.com/Santi871/HornetWaypointEditor/master/data/"
+                              "pg.json?token=ACQW6PPI77ATCRJ2RZSDSBC44UAOG", f".\\data\\pg.json")
+
+    caucdata = update_base_data("https://raw.githubusercontent.com/Santi871/HornetWaypointEditor/master/data/"
+                                "cauc.json?token=ACQW6PIVKSD72T7FLOBQHCC44W334", f".\\data\\cauc.json")
+
+    if pgdata and caucdata:
+        logger.info("PG and Caucasus default bases updated succesfully")
+    else:
+        logger.warning("Failed to update PG and Caucasus default bases")
+
+    for _, _, files in walk(".\\data"):
+        for filename in files:
+            if ".json" in filename:
+                with open(".\\data\\" + filename, "r") as f:
+                    try:
+                        load_base_data(json.load(f), default_bases)
+                        logger.info(f"Default base data built succesfully from file: {filename}")
+                    except AttributeError:
+                        logger.warning(f"Failed to build default base data from file: {filename}", exc_info=True)
 
 
 @dataclass
@@ -51,14 +89,13 @@ class Wp:
             raise ValueError("Waypoint position must be a LatLon object or base name string")
 
     def to_dict(self):
-        d = dict(
+        return dict(
             latitude=self.position.lat.decimal_degree,
             longitude=self.position.lon.decimal_degree,
             elevation=self.elevation,
             name=self.name,
             sequence=self.sequence
         )
-        return d
 
 
 @dataclass
@@ -68,13 +105,12 @@ class MSN:
     name: str = ""
 
     def to_dict(self):
-        d = dict(
+        return dict(
             latitude=self.position.lat.decimal_degree,
             longitude=self.position.lon.decimal_degree,
             elevation=self.elevation,
             name=self.name
         )
-        return d
 
 
 class Profile:
@@ -130,18 +166,3 @@ class Profile:
     def get_sequence(self, identifier):
         return self.sequences_dict.get(identifier, list())
 
-
-create_base_data("https://raw.githubusercontent.com/Santi871/HornetWaypointEditor/master/data/"
-                 "pg.json?token=ACQW6PPI77ATCRJ2RZSDSBC44UAOG", "./data/pg.json")
-
-create_base_data("https://raw.githubusercontent.com/Santi871/HornetWaypointEditor/master/data/"
-                 "cauc.json?token=ACQW6PIVKSD72T7FLOBQHCC44W334", "./data/cauc.json")
-
-with open("./data/cauc.json", "r") as f:
-    cauc_data = json.load(f)
-
-with open("./data/pg.json", "r") as f:
-    pg_data = json.load(f)
-
-load_base_data(cauc_data, default_bases)
-load_base_data(pg_data, default_bases)
