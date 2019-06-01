@@ -1,14 +1,17 @@
 from configparser import ConfigParser
 from shutil import copytree
-from src.gui import first_time_setup_gui
+from src.gui import first_time_setup_gui, detect_dcs_bios
 from src.logger import get_logger
 from pathlib import Path
 import os
 
 
 def install_dcs_bios(dcs_path):
-    with open(dcs_path + "Scripts\\Export.lua", "r") as f:
-        filestr = f.read()
+    try:
+        with open(dcs_path + "Scripts\\Export.lua", "r") as f:
+            filestr = f.read()
+    except FileNotFoundError:
+        filestr = str()
 
     with open(dcs_path + "Scripts\\Export.lua", "a") as f:
         if "dofile(lfs.writedir()..[[Scripts\\DCS-BIOS\\BIOS.lua]])" not in filestr:
@@ -31,17 +34,27 @@ def first_time_setup():
 
         if event is None:
             return False
-        elif event == "Accept":
+        elif event == "accept_button":
             break
-        elif event == "Install":
+        elif event == "install_button":
             try:
                 install_dcs_bios(values["dcs_path"])
-                gui.Element("Install").Update(disabled=True)
-                gui.Element("Accept").Update(disabled=False)
+                gui.Element("install_button").Update(disabled=True)
+                gui.Element("accept_button").Update(disabled=False)
                 gui.Element("dcs_bios").Update(value="Installed")
-            except (FileExistsError, FileNotFoundError) as exc:
-                gui.Close()
-                raise Exception("Failed to install DCS-BIOS: " + str(exc))
+            except (FileExistsError, FileNotFoundError):
+                gui.Element("dcs_bios").Update(value="Failed to install")
+                setup_logger.error("DCS-BIOS failed to installed", exc_info=True)
+        elif event == "dcs_path":
+            dcs_bios_detected = detect_dcs_bios(values["dcs_path"])
+            if dcs_bios_detected:
+                gui.Element("install_button").Update(disabled=True)
+                gui.Element("accept_button").Update(disabled=False)
+                gui.Element("dcs_bios").Update(value="Detected")
+            else:
+                gui.Element("install_button").Update(disabled=False)
+                gui.Element("accept_button").Update(disabled=True)
+                gui.Element("dcs_bios").Update(value="Not detected")
 
     config = ConfigParser()
     config.add_section("PREFERENCES")
@@ -49,7 +62,7 @@ def first_time_setup():
     config.set("PREFERENCES", "tesseract_path", default_tesseract_path or values.get("tesseract_path"))
     config.set("PREFERENCES", "dcs_path", default_dcs_path or values.get("dcs_path"))
     config.set("PREFERENCES", "db_name", "profiles.db")
-    config.set("PREFERENCES", "capture_key", "left ctrl+t" or values.get("capture_key"))
+    config.set("PREFERENCES", "capture_key", "ctrl+t" or values.get("capture_key"))
 
     with open("settings.ini", "w+") as f:
         config.write(f)

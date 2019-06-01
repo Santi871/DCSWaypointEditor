@@ -11,14 +11,14 @@ from pathlib import Path
 import os
 
 
-def detect_dcs_bios(default_dcs_path):
-    dcs_bios_detected = "Not detected"
+def detect_dcs_bios(dcs_path):
+    dcs_bios_detected = False
 
     try:
-        with open(default_dcs_path + "Scripts\\Export.lua", "r") as f:
+        with open(dcs_path + "\\Scripts\\Export.lua", "r") as f:
             if r"dofile(lfs.writedir()..[[Scripts\DCS-BIOS\BIOS.lua]])" in f.read() and \
-                    os.path.exists(default_dcs_path + "\\Scripts\\DCS-BIOS"):
-                dcs_bios_detected = "Detected"
+                    os.path.exists(dcs_path + "\\Scripts\\DCS-BIOS"):
+                dcs_bios_detected = True
     except FileNotFoundError:
         pass
     return dcs_bios_detected
@@ -27,23 +27,23 @@ def detect_dcs_bios(default_dcs_path):
 def first_time_setup_gui():
     default_dcs_path = f"{str(Path.home())}\\Saved Games\\DCS.openbeta\\"
     default_tesseract_path = f"{os.environ['PROGRAMW6432']}\\Tesseract-OCR\\tesseract.exe"
-    dcs_bios_detected = detect_dcs_bios(default_dcs_path)
+    dcs_bios_detected = "Detected" if detect_dcs_bios(default_dcs_path) else "Not detected"
 
     layout = [
-        [PyGUI.Text("DCS User Folder Path:"), PyGUI.Input(default_dcs_path, key="dcs_path"),
+        [PyGUI.Text("DCS User Folder Path:"), PyGUI.Input(default_dcs_path, key="dcs_path", enable_events=True),
          PyGUI.Button("Browse...", button_type=PyGUI.BUTTON_TYPE_BROWSE_FOLDER, target="dcs_path")],
 
         [PyGUI.Text("Tesseract.exe Path:"), PyGUI.Input(default_tesseract_path, key="tesseract_path"),
          PyGUI.Button("Browse...", button_type=PyGUI.BUTTON_TYPE_BROWSE_FILE, target="tesseract_path")],
 
-        [PyGUI.Text("F10 Map Capture Key:"), PyGUI.Input("left ctrl+t", key="capture_key")],
+        [PyGUI.Text("F10 Map Capture Key:"), PyGUI.Input("ctrl+t", key="capture_key")],
 
         [PyGUI.Text("DCS-BIOS:"), PyGUI.Text(dcs_bios_detected, key="dcs_bios"),
-         PyGUI.Button("Install", disabled=dcs_bios_detected == "Detected")],
+         PyGUI.Button("Install", key="install_button", disabled=dcs_bios_detected == "Detected")],
     ]
 
     return PyGUI.Window("First time setup", [[PyGUI.Frame("Settings", layout)],
-                                             [PyGUI.Button("Accept", pad=((250, 1), 1),
+                                             [PyGUI.Button("Accept", key="accept_button", pad=((250, 1), 1),
                                                            disabled=dcs_bios_detected != "Detected")]])
 
 
@@ -60,8 +60,9 @@ class GUI:
         self.exit_quick_capture = False
         self.values = None
         self.capturing = False
+        self.capture_key = self.editor.settings.get("PREFERENCES", "capture_key")
 
-        pytesseract.pytesseract.tesseract_cmd = self.editor.settings['PREFERENCES']['Tesseract_Path']
+        pytesseract.pytesseract.tesseract_cmd = self.editor.settings['PREFERENCES'].get('tesseract_path', str())
         try:
             self.tesseract_version = pytesseract.get_tesseract_version()
             self.capture_status = "Status: Not capturing"
@@ -122,8 +123,8 @@ class GUI:
         framewptypelayout = [
             [PyGUI.Radio("WP", group_id="wp_type", default=True, enable_events=True, key="WP"),
              PyGUI.Radio("MSN", group_id="wp_type", enable_events=True, key="MSN"),
-             PyGUI.Radio("FP", group_id="wp_type", disabled=True), PyGUI.Radio("ST", group_id="wp_type",
-                                                                               disabled=True)],
+             PyGUI.Radio("FP", group_id="wp_type", disabled=True),
+             PyGUI.Radio("ST", group_id="wp_type", disabled=True)],
             [PyGUI.Radio("IP", group_id="wp_type", disabled=True), PyGUI.Radio("DP", group_id="wp_type", disabled=True),
              PyGUI.Radio("HA", group_id="wp_type", disabled=True)],
             [PyGUI.Button("Quick Capture", disabled=self.capture_button_disabled, key="quick_capture", pad=(5, (3, 8))),
@@ -165,7 +166,7 @@ class GUI:
         ]
 
         col1 = [
-            [PyGUI.Text("Select airfield/BlueFlag FARP")],
+            [PyGUI.Text("Select preset location")],
             [PyGUI.Combo(values=[""] + [base.name for _, base in self.editor.default_bases.items()], readonly=True,
                          enable_events=True, key='baseSelector')],
             [framedata, framewptype],
@@ -329,7 +330,7 @@ class GUI:
             self.window.Element('capture_status').Update("Status: Not capturing")
             self.capturing = False
 
-        keyboard.remove_hotkey('ctrl+t')
+        keyboard.remove_hotkey(self.capture_key)
 
     def add_wp_parsed_coords(self):
         captured_coords = self.capture_map_coords()
@@ -344,7 +345,7 @@ class GUI:
 
     def stop_quick_capture(self):
         try:
-            keyboard.remove_hotkey('ctrl+t')
+            keyboard.remove_hotkey(self.capture_key)
         except KeyError:
             pass
 
@@ -486,6 +487,7 @@ class GUI:
                 self.update_waypoints_list()
 
             elif event == "map":
+                # temporarily disabled
                 """
                 if not self.profile.waypoints and not self.profile.missions:
                     continue
@@ -518,6 +520,7 @@ class GUI:
                 directory = os.getcwd()
                 webbrowser.open(directory + "\\map.html")
                 """
+                pass
 
             elif event == "capture":
                 if not self.capturing:
@@ -525,7 +528,7 @@ class GUI:
                     self.window.Element('quick_capture').Update(disabled=True)
                     self.window.Element('capture_status').Update("Status: Capturing...")
                     self.window.Refresh()
-                    keyboard.add_hotkey("ctrl+t", self.input_parsed_coords, timeout=1)
+                    keyboard.add_hotkey(self.capture_key, self.input_parsed_coords, timeout=1)
                     self.capturing = True
                 else:
                     self.stop_quick_capture()
@@ -537,7 +540,7 @@ class GUI:
                 self.window.Element('capture_status').Update("Status: Capturing...")
                 self.capturing = True
                 self.window.Refresh()
-                keyboard.add_hotkey("ctrl+t", self.add_wp_parsed_coords, timeout=1)
+                keyboard.add_hotkey(self.capture_key, self.add_wp_parsed_coords, timeout=1)
 
             elif event == "baseSelector":
                 base = self.editor.default_bases.get(self.values['baseSelector'])
@@ -560,7 +563,7 @@ class GUI:
 
     def close(self):
         try:
-            keyboard.remove_hotkey('ctrl+t')
+            keyboard.remove_hotkey(self.capture_key)
         except KeyError:
             pass
 

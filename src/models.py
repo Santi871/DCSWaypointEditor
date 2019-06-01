@@ -23,7 +23,7 @@ class MissionModel(Model):
     name = CharField(null=True, default="")
     latitude = FloatField()
     longitude = FloatField()
-    elevation = FloatField()
+    elevation = IntegerField(default=0)
     profile = ForeignKeyField(ProfileModel, backref='missions')
 
     class Meta:
@@ -34,7 +34,7 @@ class WaypointModel(Model):
     name = CharField(null=True, default="")
     latitude = FloatField()
     longitude = FloatField()
-    elevation = FloatField()
+    elevation = IntegerField(default=0)
     profile = ForeignKeyField(ProfileModel, backref='waypoints')
     sequence = ForeignKeyField(SequenceModel, backref='waypoints', null=True)
 

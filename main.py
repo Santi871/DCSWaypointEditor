@@ -3,6 +3,7 @@ from src.logger import get_logger, log_settings
 from src.wp_editor import WaypointEditor
 from src.gui import GUI, exception_gui
 from src.first_setup import first_time_setup
+from src.objects import generate_default_bases
 import traceback
 from pyproj import datadir, _datadir
 
@@ -14,9 +15,10 @@ def main():
     except FileNotFoundError:
         first_time = True
 
-    setup_results = not first_time or first_time_setup()
+    setup_completed = not first_time or first_time_setup()
 
-    if setup_results:
+    if setup_completed:
+        generate_default_bases()
         log_settings()
         settings = ConfigParser()
         settings.read("settings.ini")
