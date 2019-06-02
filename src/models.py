@@ -23,7 +23,7 @@ class MissionModel(Model):
     name = CharField(null=True, default="")
     latitude = FloatField()
     longitude = FloatField()
-    elevation = IntegerField(default=0)
+    elevation = IntegerField()
     profile = ForeignKeyField(ProfileModel, backref='missions')
 
     class Meta:
