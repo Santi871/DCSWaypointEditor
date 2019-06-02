@@ -7,7 +7,7 @@ Currently, only the DCS F/A-18C is supported, but other aircraft support is plan
 
 ## Installation
 
-1. Download and install Google Tesseract
+1. Download and install [Google Tesseract](https://github.com/UB-Mannheim/tesseract/wiki)
 2. Unzip the contents of the DCS-Waypoint-Editor ZIP to a folder
 3. Run `dcs_wp_editor.exe` and perform the first time setup.
 
