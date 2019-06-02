@@ -134,11 +134,20 @@ class GUI:
                          key="sequence")]
         ]
 
+        frameactypelayout = [
+            [PyGUI.Radio("F/A-18C", group_id="ac_type", default=True), PyGUI.Radio("F-14A/B", group_id="ac_type",
+                                                                                   disabled=True),
+             PyGUI.Radio("M-2000C", group_id="ac_type", disabled=True), PyGUI.Radio("A-10C", group_id="ac_type",
+                                                                                    disabled=True),
+             PyGUI.Radio("AV-8B", group_id="ac_type", disabled=True)],
+            ]
+
         framelongitude = PyGUI.Frame("Longitude", [[PyGUI.Column(longitude_col1), PyGUI.Column(longitude_col2),
                                                     PyGUI.Column(longitude_col3)]])
         framelatitude = PyGUI.Frame("Latitude", [[PyGUI.Column(latitude_col1), PyGUI.Column(latitude_col2),
                                                   PyGUI.Column(latitude_col3)]])
         frameelevation = PyGUI.Frame("Elevation", frameelevationlayout, pad=(5, (3, 10)))
+        frameactype = PyGUI.Frame("Aircraft Type", frameactypelayout)
 
         framepositionlayout = [
             [framelatitude],
@@ -147,7 +156,7 @@ class GUI:
              PyGUI.Column([[PyGUI.Button("Capture from DCS F10 map", disabled=self.capture_button_disabled,
                                          key="capture",
                                          pad=(1, (18, 3)))], [PyGUI.Text(self.capture_status, key="capture_status",
-                                                                         auto_size_text=False, size=(20, 1))]])]
+                                                                         auto_size_text=False, size=(20, 1))]])],
         ]
 
         frameposition = PyGUI.Frame("Position", framepositionlayout)
@@ -171,7 +180,9 @@ class GUI:
                          enable_events=True, key='baseSelector')],
             [framedata, framewptype],
             [frameposition],
-            [PyGUI.Button("Open map in browser", key="map", visible=False), PyGUI.Button("Enter into AC", key="enter")],
+            [frameactype],
+            [PyGUI.Button("Open map in browser", key="map", visible=False),
+             PyGUI.Button("Enter into aircraft", key="enter")],
         ]
 
         colmain1 = [
@@ -182,7 +193,7 @@ class GUI:
             [PyGUI.Column(col0), PyGUI.Column(colmain1)],
         ]
 
-        return PyGUI.Window('Waypoint Editor', layout)
+        return PyGUI.Window('DCS Waypoint Editor', layout)
 
     def update_position(self, position=None, elevation=None, name=None):
 
@@ -423,6 +434,9 @@ class GUI:
                 name = self.profile.profilename
                 if not name:
                     name = PyGUI.PopupGetText("Enter profile name", "Saving profile")
+
+                if not name:
+                    return
 
                 self.profile.save(name)
                 profiles = self.editor.get_profile_names()
