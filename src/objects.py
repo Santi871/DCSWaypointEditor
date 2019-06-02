@@ -69,7 +69,7 @@ def generate_default_bases():
 @dataclass
 class Wp:
     position: Any
-    elevation: float = 0
+    elevation: int = 0
     name: str = ""
     sequence: int = 0
 
@@ -101,7 +101,7 @@ class Wp:
 @dataclass
 class MSN:
     position: LatLon
-    elevation: float
+    elevation: int
     name: str = ""
 
     def to_dict(self):
