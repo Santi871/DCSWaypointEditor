@@ -52,7 +52,7 @@ def exception_gui(exc_info):
 
 
 class GUI:
-    def __init__(self, editor):
+    def __init__(self, editor, software_version):
         self.logger = get_logger("gui")
         self.editor = editor
         self.captured_map_coords = None
@@ -61,6 +61,7 @@ class GUI:
         self.values = None
         self.capturing = False
         self.capture_key = self.editor.settings.get("PREFERENCES", "capture_key")
+        self.software_version = software_version
 
         pytesseract.pytesseract.tesseract_cmd = self.editor.settings['PREFERENCES'].get('tesseract_path', str())
         try:
@@ -72,6 +73,7 @@ class GUI:
             self.capture_status = "Status: Tesseract not found"
             self.capture_button_disabled = True
 
+        self.logger.info(f"Tesseract version is: {self.tesseract_version}")
         self.window = self.create_gui()
 
     def exit_capture(self):
@@ -112,7 +114,9 @@ class GUI:
 
         frameelevationlayout = [
             [PyGUI.Text("Feet")],
-            [PyGUI.InputText(size=(20, 1), key="elevFeet", pad=(5, (3, 10)))],
+            [PyGUI.InputText(size=(20, 1), key="elevFeet", enable_events=True)],
+            [PyGUI.Text("Meters")],
+            [PyGUI.InputText(size=(20, 1), key="elevMeters", enable_events=True, pad=(5, (3, 10)))],
         ]
 
         framedatalayoutcol2 = [
@@ -172,6 +176,7 @@ class GUI:
             [PyGUI.Button("Remove", size=(26, 1))],
             [PyGUI.Button("Save profile", size=(12, 1)), PyGUI.Button("Delete profile", size=(12, 1))],
             [PyGUI.Button("Export to file", size=(12, 1)), PyGUI.Button("Import from file", size=(12, 1))],
+            [PyGUI.Text(f"Version: {self.software_version}")]
         ]
 
         col1 = [
@@ -228,6 +233,7 @@ class GUI:
             elevation = ""
 
         self.window.Element("elevFeet").Update(elevation)
+        self.window.Element("elevMeters").Update(round(elevation/3.281) if type(elevation) == int else "")
         self.window.Refresh()
 
         if type(name) == str:
@@ -330,6 +336,7 @@ class GUI:
         try:
             position, elevation = self.parse_map_coords_string(captured_coords)
             self.update_position(position, elevation)
+            self.update_altitude_elements("meters")
             self.window.Element('capture_status').Update("Status: Captured")
             self.logger.debug("Parsed text as coords succesfully: " + str(position))
         except (IndexError, ValueError):
@@ -364,6 +371,20 @@ class GUI:
         self.window.Element('quick_capture').Update(disabled=False)
         self.window.Element('capture_status').Update("Status: Not capturing")
         self.capturing = False
+
+    def update_altitude_elements(self, elevation_unit):
+        if elevation_unit == "feet":
+            elevation = self.window.Element("elevMeters").Get()
+            if elevation:
+                self.window.Element("elevFeet").Update(round(int(elevation)*3.281))
+            else:
+                self.window.Element("elevFeet").Update("")
+        elif elevation_unit == "meters":
+            elevation = self.window.Element("elevFeet").Get()
+            if elevation:
+                self.window.Element("elevMeters").Update(round(int(elevation)/3.281))
+            else:
+                self.window.Element("elevMeters").Update("")
 
     def run(self):
         while True:
@@ -436,7 +457,7 @@ class GUI:
                     name = PyGUI.PopupGetText("Enter profile name", "Saving profile")
 
                 if not name:
-                    return
+                    continue
 
                 self.profile.save(name)
                 profiles = self.editor.get_profile_names()
@@ -444,11 +465,15 @@ class GUI:
                                                               set_to_index=profiles.index(name)+1)
 
             elif event == "Delete profile":
+                if not self.profile.profilename:
+                    continue
+
                 self.profile.delete()
                 profiles = self.editor.get_profile_names()
                 self.window.Element("profileSelector").Update(values=[""] + profiles)
                 self.profile = self.editor.get_profile("")
                 self.update_waypoints_list()
+                self.update_position()
 
             elif event == "profileSelector":
                 try:
@@ -573,7 +598,13 @@ class GUI:
             elif event in ("MSN",):
                 self.window.Element('sequence').Update(disabled=True, set_to_index=0)
 
-            self.close()
+            elif event == "elevFeet":
+                self.update_altitude_elements("meters")
+
+            elif event == "elevMeters":
+                self.update_altitude_elements("feet")
+
+        self.close()
 
     def close(self):
         try:
@@ -581,5 +612,6 @@ class GUI:
         except KeyError:
             pass
 
+        self.window.Close()
         self.editor.db.close()
         self.editor.handler.press.p.s.close()
