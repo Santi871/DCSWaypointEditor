@@ -59,10 +59,10 @@ def first_time_setup():
     config = ConfigParser()
     config.add_section("PREFERENCES")
     config.set("PREFERENCES", "grace_period", "5")
-    config.set("PREFERENCES", "tesseract_path", default_tesseract_path or values.get("tesseract_path"))
-    config.set("PREFERENCES", "dcs_path", default_dcs_path or values.get("dcs_path"))
+    config.set("PREFERENCES", "tesseract_path", values.get("tesseract_path") or default_tesseract_path)
+    config.set("PREFERENCES", "dcs_path", values.get("dcs_path") or default_dcs_path)
     config.set("PREFERENCES", "db_name", "profiles.db")
-    config.set("PREFERENCES", "capture_key", "ctrl+t" or values.get("capture_key"))
+    config.set("PREFERENCES", "capture_key", values.get("capture_key") or "ctrl+t")
 
     with open("settings.ini", "w+") as f:
         config.write(f)
