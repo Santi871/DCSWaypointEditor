@@ -83,7 +83,7 @@ class KeybindsInput:
                 self.press.ufc("2", delay_release=0.5)
             else:
                 self.press.ufc("8", delay_release=0.5)
-            self.enter_number(lat_str, two_enters=False)
+            self.enter_number(lat_str, two_enters=True)
 
             self.press.ufc("OSB3")
 
