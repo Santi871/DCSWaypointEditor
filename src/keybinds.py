@@ -30,8 +30,11 @@ def parse_dcs_binds(dcs_path):
 
     dcs_path = f"{dcs_path}\\Config\\Input\\FA-18C_hornet\\keyboard"
 
-    with open(dcs_path + "\\Keyboard.diff.lua", mode="r") as f:
-        c = f.read()
+    try:
+        with open(dcs_path + "\\Keyboard.diff.lua", mode="r") as f:
+            c = f.read()
+    except FileNotFoundError:
+        return None
 
     i = c.find("{")
     e = c.find("return")
