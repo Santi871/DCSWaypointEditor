@@ -63,7 +63,9 @@ class GUI:
         self.capture_key = self.editor.settings.get("PREFERENCES", "capture_key")
         self.software_version = software_version
 
-        pytesseract.pytesseract.tesseract_cmd = self.editor.settings['PREFERENCES'].get('tesseract_path', str())
+        tesseract_path = self.editor.settings['PREFERENCES'].get('tesseract_path', "tesseract")
+        self.logger.info(f"Tesseract path is: {tesseract_path}")
+        pytesseract.pytesseract.tesseract_cmd = tesseract_path
         try:
             self.tesseract_version = pytesseract.get_tesseract_version()
             self.capture_status = "Status: Not capturing"
