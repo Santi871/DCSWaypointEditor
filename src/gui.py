@@ -439,13 +439,16 @@ class GUI:
                 lon_deg = self.window.Element("lonDeg").Get()
                 lon_min = self.window.Element("lonMin").Get()
                 lon_sec = self.window.Element("lonSec").Get()
+                self.logger.debug(f"Attempting to add waypoint at:"
+                                  f" {lat_deg}, {lat_min}, {lat_sec} | {lon_deg}, {lon_min}, {lon_sec}")
 
-                position = LatLon(Latitude(degree=lat_deg, minute=lat_min, second=lat_sec),
-                                  Longitude(degree=lon_deg, minute=lon_min, second=lon_sec))
-                elevation = self.window.Element("elevFeet").Get()
-                name = self.window.Element("msnName").Get()
+                if lat_deg and lat_min and lat_sec and lon_deg and lon_min and lon_sec:
+                    position = LatLon(Latitude(degree=lat_deg, minute=lat_min, second=lat_sec),
+                                      Longitude(degree=lon_deg, minute=lon_min, second=lon_sec))
+                    elevation = self.window.Element("elevFeet").Get()
+                    name = self.window.Element("msnName").Get()
 
-                self.add_waypoint(position, elevation, name)
+                    self.add_waypoint(position, elevation, name)
 
             elif event == "Remove":
                 if not len(self.values['activesList']):
