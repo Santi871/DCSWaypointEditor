@@ -9,6 +9,9 @@ import logging
 from pyproj import datadir, _datadir
 
 
+version = "v0.8.1b1"
+
+
 def main():
     try:
         open("settings.ini", "r").close()
@@ -25,7 +28,7 @@ def main():
         settings.read("settings.ini")
         editor = WaypointEditor(settings)
 
-        gui = GUI(editor)
+        gui = GUI(editor, version)
 
         try:
             gui.run()
