@@ -5,6 +5,7 @@ from src.gui import GUI, exception_gui
 from src.first_setup import first_time_setup
 from src.objects import generate_default_bases
 import traceback
+import logging
 from pyproj import datadir, _datadir
 
 
@@ -41,6 +42,7 @@ if __name__ == "__main__":
         main()
     except Exception as e:
         logger.error("Exception occurred", exc_info=True)
+        logging.shutdown()
         exception_gui(traceback.format_exc())
         raise
 
