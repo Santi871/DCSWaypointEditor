@@ -9,6 +9,7 @@ import pytesseract
 import keyboard
 from pathlib import Path
 import os
+import src.pymgrs as mgrs
 
 
 def detect_dcs_bios(dcs_path):
@@ -86,32 +87,32 @@ class GUI:
 
         latitude_col1 = [
             [PyGUI.Text("Degrees")],
-            [PyGUI.InputText(size=(10, 1), key="latDeg")],
+            [PyGUI.InputText(size=(10, 1), key="latDeg", enable_events=True)],
         ]
 
         latitude_col2 = [
             [PyGUI.Text("Minutes")],
-            [PyGUI.InputText(size=(10, 1), key="latMin")],
+            [PyGUI.InputText(size=(10, 1), key="latMin", enable_events=True)],
         ]
 
         latitude_col3 = [
             [PyGUI.Text("Seconds")],
-            [PyGUI.InputText(size=(10, 1), key="latSec", pad=(5, (3, 10)))],
+            [PyGUI.InputText(size=(10, 1), key="latSec", pad=(5, (3, 10)), enable_events=True)],
         ]
 
         longitude_col1 = [
             [PyGUI.Text("Degrees")],
-            [PyGUI.InputText(size=(10, 1), key="lonDeg")],
+            [PyGUI.InputText(size=(10, 1), key="lonDeg", enable_events=True)],
         ]
 
         longitude_col2 = [
             [PyGUI.Text("Minutes")],
-            [PyGUI.InputText(size=(10, 1), key="lonMin")],
+            [PyGUI.InputText(size=(10, 1), key="lonMin", enable_events=True)],
         ]
 
         longitude_col3 = [
             [PyGUI.Text("Seconds")],
-            [PyGUI.InputText(size=(10, 1), key="lonSec", pad=(5, (3, 10)))],
+            [PyGUI.InputText(size=(10, 1), key="lonSec", pad=(5, (3, 10)), enable_events=True)],
         ]
 
         frameelevationlayout = [
@@ -119,6 +120,10 @@ class GUI:
             [PyGUI.InputText(size=(20, 1), key="elevFeet", enable_events=True)],
             [PyGUI.Text("Meters")],
             [PyGUI.InputText(size=(20, 1), key="elevMeters", enable_events=True, pad=(5, (3, 10)))],
+        ]
+
+        mgrslayout = [
+            [PyGUI.InputText(size=(20, 1), key="mgrs", enable_events=True, pad=(5, (3, 12)))],
         ]
 
         framedatalayoutcol2 = [
@@ -159,10 +164,18 @@ class GUI:
             [framelatitude],
             [framelongitude],
             [frameelevation,
-             PyGUI.Column([[PyGUI.Button("Capture from DCS F10 map", disabled=self.capture_button_disabled,
-                                         key="capture",
-                                         pad=(1, (18, 3)))], [PyGUI.Text(self.capture_status, key="capture_status",
-                                                                         auto_size_text=False, size=(20, 1))]])],
+             PyGUI.Column(
+                 [
+                     [PyGUI.Button("Capture from DCS F10 map", disabled=self.capture_button_disabled, key="capture",
+                                   pad=(1, (18, 3)))],
+
+                     [PyGUI.Text(self.capture_status, key="capture_status", auto_size_text=False, size=(20, 1))],
+
+                     [PyGUI.Frame("MGRS", mgrslayout)]
+                 ]
+             )
+             ],
+
         ]
 
         frameposition = PyGUI.Frame("Position", framepositionlayout)
@@ -388,6 +401,26 @@ class GUI:
             else:
                 self.window.Element("elevMeters").Update("")
 
+    def validate_coords(self):
+        lat_deg = self.window.Element("latDeg").Get()
+        lat_min = self.window.Element("latMin").Get()
+        lat_sec = self.window.Element("latSec").Get()
+
+        lon_deg = self.window.Element("lonDeg").Get()
+        lon_min = self.window.Element("lonMin").Get()
+        lon_sec = self.window.Element("lonSec").Get()
+
+        try:
+            position = LatLon(Latitude(degree=lat_deg, minute=lat_min, second=lat_sec),
+                              Longitude(degree=lon_deg, minute=lon_min, second=lon_sec))
+
+            elevation = self.window.Element("elevFeet").Get()
+            name = self.window.Element("msnName").Get()
+            return position, elevation, name
+        except ValueError as e:
+            self.logger.error(f"Failed to validate coords: {e}")
+            return None, None, None
+
     def run(self):
         while True:
             event, self.values = self.window.Read()
@@ -605,6 +638,22 @@ class GUI:
 
             elif event == "elevMeters":
                 self.update_altitude_elements("feet")
+
+            elif event in ("latDeg", "latMin", "latSec", "lonDeg", "lonMin", "lonSec"):
+                position, _, _ = self.validate_coords()
+
+                if position is not None:
+                    m = mgrs.encode(mgrs.LLtoUTM(position.lat.decimal_degree, position.lon.decimal_degree), 5)
+                    self.window.Element("mgrs").Update(m)
+
+            elif event == "mgrs":
+                mgrs_string = self.window.Element("mgrs").Get()
+                try:
+                    decoded_mgrs = mgrs.UTMtoLL(mgrs.decode(mgrs_string))
+                    position = LatLon(Latitude(degree=decoded_mgrs["lat"]), Longitude(degree=decoded_mgrs["lon"]))
+                    self.update_position(position)
+                except (TypeError, ValueError) as e:
+                    self.logger.error(f"Failed to decode MGRS: {e}")
 
         self.close()
 
