@@ -89,3 +89,7 @@ Profiles may be imported from a file that was previously exported.
 DCS-BIOS is redistributed under GPLv3 license.
 
 DCS-BIOS: https://github.com/DCSFlightpanels/dcs-bios
+
+## Other credits
+
+[PyMGRS](https://github.com/aydink/pymgrs) by aydink
