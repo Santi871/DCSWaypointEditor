@@ -1,4 +1,4 @@
-# Hornet Waypoint Editor
+# DCS Waypoint Editor
 
 Simple configurable script to input preplanned missions and waypoints coordinates into DCS aircraft. 
 
