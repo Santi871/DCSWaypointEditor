@@ -1,7 +1,8 @@
-import PySimpleGUI as PyGUI
-from peewee import DoesNotExist
 from src.objects import MSN, Wp
 from src.logger import get_logger
+import src.pymgrs as mgrs
+import PySimpleGUI as PyGUI
+from peewee import DoesNotExist
 from LatLon23 import LatLon, Longitude, Latitude, string2latlon
 import json
 from PIL import ImageGrab, ImageEnhance, ImageOps
@@ -9,7 +10,9 @@ import pytesseract
 import keyboard
 from pathlib import Path
 import os
-import src.pymgrs as mgrs
+import urllib.request
+import urllib.error
+import webbrowser
 
 
 def detect_dcs_bios(dcs_path):
@@ -50,6 +53,30 @@ def first_time_setup_gui():
 
 def exception_gui(exc_info):
     return PyGUI.PopupOK("An exception occured and the program terminated execution:\n\n" + exc_info)
+
+
+def check_version(current_version):
+    version_url = "https://raw.githubusercontent.com/Santi871/DCSWaypointEditor/master/release_version.txt"
+    releases_url = "https://github.com/Santi871/DCSWaypointEditor/releases"
+
+    try:
+        with urllib.request.urlopen(version_url) as response:
+            if response.code == 200:
+                html = response.read()
+            else:
+                return False
+    except (urllib.error.HTTPError, urllib.error.URLError):
+        return False
+
+    new_version = html.decode("utf-8")
+    if new_version != current_version:
+        popup_answer = PyGUI.PopupYesNo(f"New version available: {new_version}\nDo you wish to update?")
+
+        if popup_answer == "Yes":
+            webbrowser.open(releases_url)
+            return True
+        else:
+            return False
 
 
 class GUI:
@@ -166,12 +193,11 @@ class GUI:
             [frameelevation,
              PyGUI.Column(
                  [
+                     [PyGUI.Frame("MGRS", mgrslayout)],
                      [PyGUI.Button("Capture from DCS F10 map", disabled=self.capture_button_disabled, key="capture",
                                    pad=(1, (18, 3)))],
 
                      [PyGUI.Text(self.capture_status, key="capture_status", auto_size_text=False, size=(20, 1))],
-
-                     [PyGUI.Frame("MGRS", mgrslayout)]
                  ]
              )
              ],
@@ -215,7 +241,7 @@ class GUI:
 
         return PyGUI.Window('DCS Waypoint Editor', layout)
 
-    def update_position(self, position=None, elevation=None, name=None):
+    def update_position(self, position=None, elevation=None, name=None, update_mgrs=True):
 
         if position is not None:
             latdeg = round(position.lat.degree)
@@ -225,6 +251,7 @@ class GUI:
             londeg = round(position.lon.degree)
             lonmin = round(position.lon.minute)
             lonsec = round(position.lon.second, 2)
+            mgrs_str = mgrs.encode(mgrs.LLtoUTM(position.lat.decimal_degree, position.lon.decimal_degree), 5)
         else:
             latdeg = ""
             latmin = ""
@@ -233,6 +260,7 @@ class GUI:
             londeg = ""
             lonmin = ""
             lonsec = ""
+            mgrs_str = ""
 
         self.window.Element("latDeg").Update(latdeg)
         self.window.Element("latMin").Update(latmin)
@@ -249,6 +277,9 @@ class GUI:
 
         self.window.Element("elevFeet").Update(elevation)
         self.window.Element("elevMeters").Update(round(elevation/3.281) if type(elevation) == int else "")
+
+        if update_mgrs:
+            self.window.Element("mgrs").Update(mgrs_str)
         self.window.Refresh()
 
         if type(name) == str:
@@ -329,11 +360,21 @@ class GUI:
 
     def parse_map_coords_string(self, coords_string):
         split_string = coords_string.split(',')
-        split_latlon = split_string[0].split(' ')
-        lat_string = split_latlon[0].replace('N', '').replace('S', "-")
-        lon_string = split_latlon[1].replace('£', 'E').replace('E', '').replace('W', "-")
 
-        position = string2latlon(lat_string, lon_string, format_str="d%-%m%-%S")
+        if "-" in split_string[0]:
+            # dd mm ss.ss
+            split_latlon = split_string[0].split(' ')
+            lat_string = split_latlon[0].replace('N', '').replace('S', "-")
+            lon_string = split_latlon[1].replace('£', 'E').replace('E', '').replace('W', "-")
+            position = string2latlon(lat_string, lon_string, format_str="d%-%m%-%S")
+        elif "°" not in split_string[0]:
+            # mgrs
+            mgrs_string = split_string[0].replace(" ", "")
+            decoded_mgrs = mgrs.UTMtoLL(mgrs.decode(mgrs_string))
+            position = LatLon(Latitude(degree=decoded_mgrs["lat"]), Longitude(degree=decoded_mgrs["lon"]))
+        else:
+            raise ValueError(f"Invalid coordinate format: {split_string[0]}")
+
         elevation = split_string[1].replace(' ', '')
         if "ft" in elevation:
             elevation = int(elevation.replace("ft", ""))
@@ -432,22 +473,8 @@ class GUI:
                 break
 
             elif event == "Add":
-                lat_deg = self.window.Element("latDeg").Get()
-                lat_min = self.window.Element("latMin").Get()
-                lat_sec = self.window.Element("latSec").Get()
-
-                lon_deg = self.window.Element("lonDeg").Get()
-                lon_min = self.window.Element("lonMin").Get()
-                lon_sec = self.window.Element("lonSec").Get()
-                self.logger.debug(f"Attempting to add waypoint at:"
-                                  f" {lat_deg}, {lat_min}, {lat_sec} | {lon_deg}, {lon_min}, {lon_sec}")
-
-                if lat_deg and lat_min and lat_sec and lon_deg and lon_min and lon_sec:
-                    position = LatLon(Latitude(degree=lat_deg, minute=lat_min, second=lat_sec),
-                                      Longitude(degree=lon_deg, minute=lon_min, second=lon_sec))
-                    elevation = self.window.Element("elevFeet").Get()
-                    name = self.window.Element("msnName").Get()
-
+                position, elevation, name = self.validate_coords()
+                if position is not None:
                     self.add_waypoint(position, elevation, name)
 
             elif event == "Remove":
@@ -654,7 +681,7 @@ class GUI:
                 try:
                     decoded_mgrs = mgrs.UTMtoLL(mgrs.decode(mgrs_string))
                     position = LatLon(Latitude(degree=decoded_mgrs["lat"]), Longitude(degree=decoded_mgrs["lon"]))
-                    self.update_position(position)
+                    self.update_position(position, update_mgrs=False)
                 except (TypeError, ValueError) as e:
                     self.logger.error(f"Failed to decode MGRS: {e}")
 

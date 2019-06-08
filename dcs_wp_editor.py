@@ -1,7 +1,7 @@
 from configparser import ConfigParser
 from src.logger import get_logger, log_settings
 from src.wp_editor import WaypointEditor
-from src.gui import GUI, exception_gui
+from src.gui import GUI, exception_gui, check_version
 from src.first_setup import first_time_setup
 from src.objects import generate_default_bases
 import traceback
@@ -9,7 +9,7 @@ import logging
 from pyproj import datadir, _datadir
 
 
-version = "v0.8.2b1"
+version = "v0.8.3b1"
 
 
 def main():
@@ -18,6 +18,10 @@ def main():
         first_time = False
     except FileNotFoundError:
         first_time = True
+
+    update_exit = check_version(version)
+    if update_exit:
+        return
 
     setup_completed = not first_time or first_time_setup()
 
