@@ -331,7 +331,7 @@ class GUI:
 
         try:
             if self.values["MSN"] and len(self.profile.missions) < max_missions:
-                mission = MSN(position=position, elevation=int(elevation) or 0)
+                mission = MSN(position=position, elevation=int(elevation) or 0, name=name)
                 self.profile.missions.append(mission)
                 wpadded = True
 
