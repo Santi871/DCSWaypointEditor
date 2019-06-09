@@ -184,16 +184,11 @@ class KeybindsInput:
         if not msns:
             return
 
-        self.press.lmdi("11")
-        self.press.lmdi("4")
-
         n = 1
         for msn in msns:
             self.enter_pp_msn(msn, n)
             n += 1
 
-        self.press.lmdi("6")
-        self.press.lmdi("19")
         self.press.lmdi("6")
 
 
