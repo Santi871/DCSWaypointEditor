@@ -32,7 +32,7 @@ from the DCS F10 map via optical text recognition.
 
 #### F10 map captured coordinates entry
 
-1. Make sure your F10 map is in [DD MM SS.ss](https://i.imgur.com/9GIU7pJ.png) or [`MGRS`](https://i.imgur.com/T7lBvlx.png) coordinate format.
+1. Make sure your F10 map is in [DD MM SS.ss](https://i.imgur.com/9GIU7pJ.png) or [MGRS](https://i.imgur.com/T7lBvlx.png) coordinate format.
  You may cycle coordinate formats with `LAlt+Y`.
 
 2. Click `Capture from DCS F10 map`
@@ -61,10 +61,10 @@ FARPS are included.
 Currently, this feature is only supported in the F/A-18C Hornet.
 
 1. Make sure the main HSI page is on the AMPCD (bottom screen) if you are entering waypoints.
-
-![pages](https://i.imgur.com/Nxr9qKX.png)
  
 2. If you are entering JDAM preplanned missions, make sure the JDAM preplanned missions page is on the left DDI
+
+![pages](https://i.imgur.com/Nxr9qKX.png)
 
 3. With a list of active waypoints and/or JDAM preplanned missions, click `Enter into aircraft`
 
