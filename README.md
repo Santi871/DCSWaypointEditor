@@ -89,6 +89,12 @@ following the format in the `pg.json` and `cauc.json`.
 
 * Attempting to enter sequence #2 or #3 without sequence #1 will not work.
 
+## Donate
+
+If you'd like to support my work, it is very much appreciated!
+
+![https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=U6ZGEE7PF6KAG&source=url](https://www.paypalobjects.com/en_US/i/btn/btn_donate_LG.gif)
+
 ## About DCS-BIOS
 DCS-BIOS is redistributed under GPLv3 license.
 
