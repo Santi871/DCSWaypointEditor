@@ -312,6 +312,16 @@ class GUI:
 
         self.window.Element('activesList').Update(values=values)
 
+    def disable_coords_input(self):
+        for element_name in\
+                ("latDeg", "latMin", "latSec", "lonDeg", "lonMin", "lonSec", "mgrs", "elevFeet", "elevMeters"):
+            self.window.Element(element_name).Update(disabled=True)
+
+    def enable_coords_input(self):
+        for element_name in\
+                ("latDeg", "latMin", "latSec", "lonDeg", "lonMin", "lonSec", "mgrs", "elevFeet", "elevMeters"):
+            self.window.Element(element_name).Update(disabled=False)
+
     def add_waypoint(self, position, elevation, name=None):
         max_missions = 6
 
@@ -391,7 +401,7 @@ class GUI:
         captured_coords = self.capture_map_coords()
         try:
             position, elevation = self.parse_map_coords_string(captured_coords)
-            self.update_position(position, elevation)
+            self.update_position(position, elevation, update_mgrs=True)
             self.update_altitude_elements("meters")
             self.window.Element('capture_status').Update("Status: Captured")
             self.logger.debug("Parsed text as coords succesfully: " + str(position))
@@ -399,9 +409,9 @@ class GUI:
             self.logger.error("Failed to parse captured text", exc_info=True)
             self.window.Element('capture_status').Update("Status: Failed to capture")
         finally:
+            self.enable_coords_input()
             self.window.Element('quick_capture').Update(disabled=False)
             self.window.Element('capture').Update(text="Capture from DCS F10 map")
-            self.window.Element('capture_status').Update("Status: Not capturing")
             self.capturing = False
 
         keyboard.remove_hotkey(self.capture_key)
@@ -628,6 +638,7 @@ class GUI:
 
             elif event == "capture":
                 if not self.capturing:
+                    self.disable_coords_input()
                     self.window.Element('capture').Update(text="Stop capturing")
                     self.window.Element('quick_capture').Update(disabled=True)
                     self.window.Element('capture_status').Update("Status: Capturing...")
@@ -639,6 +650,7 @@ class GUI:
 
             elif event == "quick_capture":
                 self.exit_quick_capture = False
+                self.disable_coords_input()
                 self.window.Element('capture').Update(text="Stop capturing")
                 self.window.Element('quick_capture').Update(disabled=True)
                 self.window.Element('capture_status').Update("Status: Capturing...")
