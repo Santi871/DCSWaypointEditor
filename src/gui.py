@@ -365,7 +365,8 @@ class GUI:
         image = ImageGrab.grab((101, 5, 101 + 269, 5 + 27))
         enhancer = ImageEnhance.Contrast(image)
         captured_map_coords = pytesseract.image_to_string(ImageOps.invert(enhancer.enhance(3)))
-        self.logger.info("Raw captured text: " + captured_map_coords)
+        if self.editor.settings.getboolean("PREFERENCES", "log_raw_tesseract_output"):
+            self.logger.info("Raw captured text: " + captured_map_coords)
         return captured_map_coords
 
     def parse_map_coords_string(self, coords_string):
@@ -405,7 +406,7 @@ class GUI:
             self.update_altitude_elements("meters")
             self.window.Element('capture_status').Update("Status: Captured")
             self.logger.debug("Parsed text as coords succesfully: " + str(position))
-        except (IndexError, ValueError):
+        except (IndexError, ValueError, TypeError):
             self.logger.error("Failed to parse captured text", exc_info=True)
             self.window.Element('capture_status').Update("Status: Failed to capture")
         finally:
@@ -420,7 +421,7 @@ class GUI:
         captured_coords = self.capture_map_coords()
         try:
             position, elevation = self.parse_map_coords_string(captured_coords)
-        except (IndexError, ValueError):
+        except (IndexError, ValueError, TypeError):
             self.logger.error("Failed to parse captured text", exc_info=True)
             return
         added = self.add_waypoint(position, elevation)
@@ -433,6 +434,7 @@ class GUI:
         except KeyError:
             pass
 
+        self.enable_coords_input()
         self.window.Element('capture').Update(text="Capture from DCS F10 map")
         self.window.Element('quick_capture').Update(disabled=False)
         self.window.Element('capture_status').Update("Status: Not capturing")
