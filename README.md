@@ -84,7 +84,7 @@ Profiles may be imported from a file that was previously exported.
 #### Creating your own preset locations
 
 You may add more preset locations by adding more JSON formatted files in the data folder,
-following the format in the `pg.json` and `cauc.json`.
+following the format in `pg.json` and `cauc.json`.
 
 ## Known issues
 
