@@ -80,6 +80,11 @@ If you wish to share your current profile, click `Export to file` and give it a 
 
 Profiles may be imported from a file that was previously exported.
 
+#### Creating your own preset locations
+
+You may add more preset locations by adding more JSON formatted files in the data folder,
+following the format in the `pg.json` and `cauc.json`.
+
 ## Known issues
 
 * Attempting to enter sequence #2 or #3 without sequence #1 will not work.
