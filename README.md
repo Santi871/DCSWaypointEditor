@@ -32,7 +32,8 @@ from the DCS F10 map via optical text recognition.
 
 #### F10 map captured coordinates entry
 
-1. Make sure your F10 map is in DD MM SS.ss coordinate format. You may cycle coordinate formats with `LAlt+Y`.
+1. Make sure your F10 map is in ``DD MM SS.ss`` or `MGRS` coordinate format.
+ You may cycle coordinate formats with `LAlt+Y`.
 
 2. Click `Capture from DCS F10 map`
 
