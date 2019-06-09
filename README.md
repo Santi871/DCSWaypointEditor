@@ -61,8 +61,7 @@ Currently, this feature is only supported in the F/A-18C Hornet.
 
 1. Make sure the main HSI page is on the AMPCD (bottom screen) if you are entering waypoints.
  
-2. If you are entering JDAM preplanned missions, make sure the main JDAM page is on the left DDI (the page immediately 
-after selecting a JDAM from the stores page).
+2. If you are entering JDAM preplanned missions, make sure the JDAM preplanned missions page is on the left DDI
 
 3. With a list of active waypoints and/or JDAM preplanned missions, click `Enter into aircraft`
 
