@@ -399,8 +399,8 @@ class GUI:
         return position, elevation
 
     def input_parsed_coords(self):
-        captured_coords = self.capture_map_coords()
         try:
+            captured_coords = self.capture_map_coords()
             position, elevation = self.parse_map_coords_string(captured_coords)
             self.update_position(position, elevation, update_mgrs=True)
             self.update_altitude_elements("meters")
@@ -418,8 +418,8 @@ class GUI:
         keyboard.remove_hotkey(self.capture_key)
 
     def add_wp_parsed_coords(self):
-        captured_coords = self.capture_map_coords()
         try:
+            captured_coords = self.capture_map_coords()
             position, elevation = self.parse_map_coords_string(captured_coords)
         except (IndexError, ValueError, TypeError):
             self.logger.error("Failed to parse captured text", exc_info=True)
