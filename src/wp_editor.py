@@ -5,30 +5,48 @@ from src.db import DatabaseInterface
 from src.logger import get_logger
 
 
-def latlon_tostring(latlong):
-    lat_deg = str(abs(round(latlong.lat.degree)))
-    lat_min = str(abs(round(latlong.lat.minute))).zfill(2)
-    lat_sec = abs(latlong.lat.second)
+def latlon_tostring(latlong, decimal_minutes_mode=False):
 
-    lat_sec_int, lat_sec_dec = divmod(lat_sec, 1)
+    if not decimal_minutes_mode:
+        lat_deg = str(abs(round(latlong.lat.degree)))
+        lat_min = str(abs(round(latlong.lat.minute))).zfill(2)
+        lat_sec = abs(latlong.lat.second)
 
-    lat_sec = str(int(lat_sec_int)).zfill(2)
+        lat_sec_int, lat_sec_dec = divmod(lat_sec, 1)
 
-    if lat_sec_dec:
-        lat_sec += "." + str(round(lat_sec_dec, 2))[2:4]
+        lat_sec = str(int(lat_sec_int)).zfill(2)
 
-    lon_deg = str(abs(round(latlong.lon.degree)))
-    lon_min = str(abs(round(latlong.lon.minute))).zfill(2)
-    lon_sec = abs(latlong.lon.second)
+        if lat_sec_dec:
+            lat_sec += "." + str(round(lat_sec_dec, 2))[2:4]
 
-    lon_sec_int, lon_sec_dec = divmod(lon_sec, 1)
+        lon_deg = str(abs(round(latlong.lon.degree)))
+        lon_min = str(abs(round(latlong.lon.minute))).zfill(2)
+        lon_sec = abs(latlong.lon.second)
 
-    lon_sec = str(int(lon_sec_int)).zfill(2)
+        lon_sec_int, lon_sec_dec = divmod(lon_sec, 1)
 
-    if lon_sec_dec:
-        lon_sec += "." + str(round(lon_sec_dec, 2))[2:4]
+        lon_sec = str(int(lon_sec_int)).zfill(2)
 
-    return lat_deg + lat_min + lat_sec, lon_deg + lon_min + lon_sec
+        if lon_sec_dec:
+            lon_sec += "." + str(round(lon_sec_dec, 2))[2:4]
+
+        return lat_deg + lat_min + lat_sec, lon_deg + lon_min + lon_sec
+    else:
+        lat_deg = str(abs(round(latlong.lat.degree)))
+        lat_min = str(round(latlong.lat.decimal_minute, 4))
+
+        lat_min_split = lat_min.split(".")
+        lat_min_split[0] = lat_min_split[0].zfill(2)
+        lat_min = ".".join(lat_min_split)
+
+        lon_deg = str(abs(round(latlong.lon.degree)))
+        lon_min = str(round(latlong.lon.decimal_minute, 4))
+
+        lon_min_split = lon_min.split(".")
+        lon_min_split[0] = lon_min_split[0].zfill(2)
+        lon_min = ".".join(lon_min_split)
+
+        return lat_deg + lat_min, lon_deg + lon_min
 
 
 class KeybindsInput:
@@ -56,22 +74,22 @@ class KeybindsInput:
 
             self.press.ufc("ENT", delay_release=0.5)
 
-    def enter_coords(self, latlong, elev, pp):
-        lat_str, lon_str = latlon_tostring(latlong)
+    def enter_coords(self, latlong, elev, pp, decimal_minutes_mode=False):
+        lat_str, lon_str = latlon_tostring(latlong, decimal_minutes_mode=decimal_minutes_mode)
 
         if not pp:
             if latlong.lat.degree > 0:
                 self.press.ufc("2", delay_release=0.5)
             else:
                 self.press.ufc("8", delay_release=0.5)
-            self.enter_number(lat_str)
+            self.enter_number(lat_str, two_enters=True)
             sleep(0.5)
 
             if latlong.lon.degree > 0:
                 self.press.ufc("6", delay_release=0.5)
             else:
                 self.press.ufc("4", delay_release=0.5)
-            self.enter_number(lon_str)
+            self.enter_number(lon_str, two_enters=True)
 
             if elev:
                 self.press.ufc("OSB3")
@@ -109,6 +127,7 @@ class KeybindsInput:
 
         i = 1
         self.press.ampcd("10")
+        self.press.ampcd("19")
         self.press.ufc("CLR")
         self.press.ufc("CLR")
 
@@ -121,7 +140,7 @@ class KeybindsInput:
             self.press.ampcd("12")
             self.press.ampcd("5")
             self.press.ufc("OSB1")
-            self.enter_coords(wp.position, wp.elevation, pp=False)
+            self.enter_coords(wp.position, wp.elevation, pp=False, decimal_minutes_mode=True)
             self.press.ufc("CLR")
 
             i += 1
@@ -143,6 +162,7 @@ class KeybindsInput:
         self.press.ufc("CLR")
         self.press.ufc("CLR")
         self.press.ufc("CLR")
+        self.press.ampcd("19")
         self.press.ampcd("10")
 
     def enter_pp_msn(self, msn, n):
