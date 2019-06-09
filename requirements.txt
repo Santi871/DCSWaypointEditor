@@ -1,5 +1,4 @@
 Pillow
-folium
 pytesseract
 peewee
 PySimpleGUI
