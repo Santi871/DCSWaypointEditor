@@ -443,16 +443,22 @@ class GUI:
     def update_altitude_elements(self, elevation_unit):
         if elevation_unit == "feet":
             elevation = self.window.Element("elevMeters").Get()
-            if elevation:
-                self.window.Element("elevFeet").Update(round(int(elevation)*3.281))
-            else:
-                self.window.Element("elevFeet").Update("")
+            try:
+                if elevation:
+                    self.window.Element("elevFeet").Update(round(int(elevation)*3.281))
+                else:
+                    self.window.Element("elevFeet").Update("")
+            except ValueError:
+                pass
         elif elevation_unit == "meters":
             elevation = self.window.Element("elevFeet").Get()
-            if elevation:
-                self.window.Element("elevMeters").Update(round(int(elevation)/3.281))
-            else:
-                self.window.Element("elevMeters").Update("")
+            try:
+                if elevation:
+                    self.window.Element("elevMeters").Update(round(int(elevation)/3.281))
+                else:
+                    self.window.Element("elevMeters").Update("")
+            except ValueError:
+                pass
 
     def validate_coords(self):
         lat_deg = self.window.Element("latDeg").Get()
