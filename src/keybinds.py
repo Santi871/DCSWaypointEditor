@@ -98,7 +98,8 @@ class BindsManager:
     def __init__(self, mode, logger, preferences):
         self.mode = mode
         self.logger = logger
-        self.binds_dict = parse_dcs_binds(preferences.get("dcs_path"))
+        # self.binds_dict = parse_dcs_binds(preferences.get("dcs_path"))
+        self.binds_dict = dict()
         self.p = BindsPresser()
 
     def get_bind(self, bindname):
