@@ -3,7 +3,7 @@ from typing import Any
 from LatLon23 import LatLon, Longitude, Latitude
 import json
 import urllib.request
-from os import walk
+from os import walk, path
 from src.logger import get_logger
 
 
@@ -17,8 +17,9 @@ def update_base_data(url, file):
         else:
             return False
 
-    with open(file, "w") as f2:
-        f2.write(html.decode('utf-8'))
+    if path.isfile(file):
+        with open(file, "w") as f2:
+            f2.write(html.decode('utf-8'))
     return True
 
 
