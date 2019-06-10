@@ -68,7 +68,7 @@ class KeybindsInput:
         i = str(number).find(".")
 
         if two_enters:
-            if i > 0 and str(number)[i + 1] != "0":
+            if i > 0:
                 for num in str(number)[str(number).find(".") + 1:]:
                     self.press.ufc(num)
 
@@ -76,6 +76,7 @@ class KeybindsInput:
 
     def enter_coords(self, latlong, elev, pp, decimal_minutes_mode=False):
         lat_str, lon_str = latlon_tostring(latlong, decimal_minutes_mode=decimal_minutes_mode)
+        self.logger.debug(f"Entering coords string: {lat_str}, {lon_str}")
 
         if not pp:
             if latlong.lat.degree > 0:
