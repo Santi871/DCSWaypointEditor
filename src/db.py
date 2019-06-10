@@ -79,7 +79,7 @@ class DatabaseInterface:
         for waypoint in profile.waypoints:
             waypoint.delete_instance()
 
-        profile.delete_instance()
+        profile.delete_instance(recursive=True)
 
     @staticmethod
     def get_profile_names():
