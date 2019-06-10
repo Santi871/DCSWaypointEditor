@@ -9,9 +9,11 @@ reformers = {
     'lctrl': "left ctrl",
     'lalt': "left alt",
     'lshift': "left shift",
+    'lwin': "left windows",
     'rctrl': "right ctrl",
     'ralt': "right alt",
     'rshift': "right shift",
+    'rwin': "right windows",
 }
 
 
