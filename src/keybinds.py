@@ -1,4 +1,3 @@
-from pathlib import Path
 from slpp import slpp as lua
 import keyboard
 from time import sleep
