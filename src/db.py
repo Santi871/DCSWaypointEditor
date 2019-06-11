@@ -14,6 +14,7 @@ class DatabaseInterface:
 
     def get_profile(self, profilename):
         profile = ProfileModel.get(ProfileModel.name == profilename)
+        aircraft = profile.aircraft
         msns = [MSN(LatLon(Latitude(mission.latitude), Longitude(mission.longitude)),
                     elevation=mission.elevation, name=mission.name) for mission in profile.missions]
 
@@ -30,7 +31,7 @@ class DatabaseInterface:
             wps.append(wp)
 
         self.logger.debug(f"Fetched {profilename} from DB, with {len(msns)} missions and {len(wps)} waypoints")
-        return msns, wps
+        return msns, wps, aircraft
 
     def save_profile(self, profileinstance):
         delete_list = list()

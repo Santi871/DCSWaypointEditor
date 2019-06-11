@@ -115,13 +115,12 @@ class MSN:
 
 
 class Profile:
-    def __init__(self, profilename, db_interface, aircraft=None):
+    def __init__(self, profilename, db_interface):
         self.profilename = profilename
         self.db_interface = db_interface
-        self.aircraft = aircraft
 
         if profilename:
-            self.missions, self.waypoints = self.db_interface.get_profile(profilename)
+            self.missions, self.waypoints, self.aircraft = self.db_interface.get_profile(profilename)
         else:
             self.missions, self.waypoints = list(), list()
 

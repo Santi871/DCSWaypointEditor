@@ -1,8 +1,12 @@
 from time import sleep
-from src.keybinds import BindsManager
 from src.objects import default_bases, Profile
 from src.db import DatabaseInterface
 from src.logger import get_logger
+from src.drivers import HornetDriver
+
+
+class DriverException(Exception):
+    pass
 
 
 def latlon_tostring(latlong, decimal_minutes_mode=False):
@@ -49,12 +53,18 @@ def latlon_tostring(latlong, decimal_minutes_mode=False):
         return lat_deg + lat_min, lon_deg + lon_min
 
 
-class KeybindsInput:
-
+class AircraftInterface:
     def __init__(self, settings):
-        self.logger = get_logger("keybinds_input")
+        self.logger = get_logger("aircraft_interface")
         self.settings = settings
-        self.press = BindsManager("dcs-bios", self.logger, settings['PREFERENCES'])
+        self.drivers = dict(hornet=HornetDriver())
+        self.press = None
+
+    def set_driver(self, driver_name):
+        try:
+            self.press = self.drivers[driver_name]
+        except KeyError:
+            raise DriverException(f"Undefined driver: {driver_name}")
 
     def enter_number(self, number, two_enters=False):
         for num in str(number):
@@ -198,15 +208,14 @@ class WaypointEditor:
     def __init__(self, settings):
         self.logger = get_logger("editor")
         self.settings = settings
-        self.handler = KeybindsInput(settings)
+        self.handler = AircraftInterface(settings)
         self.db = DatabaseInterface(settings['PREFERENCES'].get("DB_Name", "profiles.db"))
         self.default_bases = default_bases
         self.wps_list = list()
         self.msns_list = list()
-        self.aircraft = "hornet"
 
     def get_profile(self, profilename):
-        return Profile(profilename, self.db, self.aircraft)
+        return Profile(profilename, self.db)
 
     def get_profile_names(self):
         return self.db.get_profile_names()
@@ -230,6 +239,7 @@ class WaypointEditor:
         self.handler.enter_missions(msns)
 
     def enter_all(self, profile):
+        self.handler.set_driver(profile.aircraft)
         sleep(int(self.settings['PREFERENCES'].get('Grace_Period', 5)))
         self.handler.enter_missions(profile.missions)
         sleep(1)

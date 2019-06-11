@@ -31,14 +31,14 @@ def first_time_setup():
 
     while True:
         event, values = gui.Read()
+        if event is None:
+            return False
 
         dcs_path = values.get("dcs_path")
         if dcs_path is not None and not dcs_path.endswith("\\") and not dcs_path.endswith("/"):
             dcs_path = dcs_path + "\\"
 
-        if event is None:
-            return False
-        elif event == "accept_button":
+        if event == "accept_button":
             break
         elif event == "install_button":
             try:

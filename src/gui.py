@@ -715,4 +715,4 @@ class GUI:
 
         self.window.Close()
         self.editor.db.close()
-        self.editor.handler.press.p.s.close()
+        self.editor.handler.press.stop()
