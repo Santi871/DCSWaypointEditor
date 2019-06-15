@@ -25,6 +25,10 @@ def strike(text):
     return result
 
 
+def unstrike(text):
+    return text.replace('\u0336', '')
+
+
 def detect_dcs_bios(dcs_path):
     dcs_bios_detected = False
 
@@ -542,8 +546,8 @@ class GUI:
     def run(self):
         while True:
             event, self.values = self.window.Read()
-            self.logger.debug("Event: " + str(event))
-            self.logger.debug("Values: " + str(self.values))
+            self.logger.debug(f"Event: {event}")
+            self.logger.debug(f"Values: {self.values}")
 
             if event is None or event == 'Exit':
                 self.logger.info("Exiting...")
@@ -556,20 +560,20 @@ class GUI:
 
             elif event == "Remove":
                 if self.values['activesList']:
-                    valuestr = self.values['activesList'][0]
+                    valuestr = unstrike(self.values['activesList'][0])
 
                     if "MSN" not in valuestr:
                         i, = re.findall("(\\d)+", valuestr)
                         self.profile.waypoints.get("WP", list()).pop(int(i)-1)
                     else:
                         i, station = re.findall("(\\d)+", valuestr)
-                        self.profile.waypoints.get("MSN", list())[int(station)].pop(int(i)-1)
+                        self.profile.waypoints.get("MSN", list())[station].pop(int(i)-1)
 
                     self.update_waypoints_list()
 
             elif event == "activesList":
                 if self.values['activesList']:
-                    valuestr = self.values['activesList'][0]
+                    valuestr = unstrike(self.values['activesList'][0])
 
                     if "MSN" not in valuestr:
                         i, = re.findall("(\\d)+", valuestr)
@@ -577,7 +581,7 @@ class GUI:
 
                     else:
                         i, station = re.findall("(\\d)+", valuestr)
-                        mission = self.profile.waypoints["MSN"][int(station)][int(i) - 1]
+                        mission = self.profile.waypoints["MSN"][station][int(i) - 1]
 
                     self.update_position(mission.position, mission.elevation, mission.name)
 
