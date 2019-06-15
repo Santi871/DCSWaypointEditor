@@ -22,7 +22,6 @@ def install_dcs_bios(dcs_path):
 
 def first_time_setup():
     default_dcs_path = f"{str(Path.home())}\\Saved Games\\DCS.openbeta\\"
-    default_tesseract_path = f"{os.environ['PROGRAMW6432']}\\Tesseract-OCR\\tesseract.exe"
 
     setup_logger = get_logger("setup")
     setup_logger.info("Running first time setup...")
@@ -63,9 +62,9 @@ def first_time_setup():
     config = ConfigParser()
     config.add_section("PREFERENCES")
     config.set("PREFERENCES", "grace_period", "5")
-    config.set("PREFERENCES", "tesseract_path", values.get("tesseract_path") or default_tesseract_path)
+    config.set("PREFERENCES", "tesseract_path", values.get("tesseract_path"))
     config.set("PREFERENCES", "dcs_path", dcs_path or default_dcs_path)
-    config.set("PREFERENCES", "db_name", "profiles.db")
+    config.set("PREFERENCES", "db_name", "profiles_new.db")
     config.set("PREFERENCES", "capture_key", values.get("capture_key") or "ctrl+t")
     config.set("PREFERENCES", "log_raw_tesseract_output", "false")
 
