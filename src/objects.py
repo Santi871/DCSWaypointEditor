@@ -73,6 +73,8 @@ class Wp:
     elevation: int = 0
     name: str = ""
     sequence: int = 0
+    wp_type: str = "WP"
+    station: int = 0
 
     def __post_init__(self):
         if type(self.position) == str:
@@ -89,28 +91,18 @@ class Wp:
         if not type(self.position) == LatLon:
             raise ValueError("Waypoint position must be a LatLon object or base name string")
 
+        if self.wp_type == "MSN" and not self.station:
+            raise ValueError("No station defined for PP MSN")
+
     def to_dict(self):
         return dict(
             latitude=self.position.lat.decimal_degree,
             longitude=self.position.lon.decimal_degree,
             elevation=self.elevation,
             name=self.name,
-            sequence=self.sequence
-        )
-
-
-@dataclass
-class MSN:
-    position: LatLon
-    elevation: int
-    name: str = ""
-
-    def to_dict(self):
-        return dict(
-            latitude=self.position.lat.decimal_degree,
-            longitude=self.position.lon.decimal_degree,
-            elevation=self.elevation,
-            name=self.name
+            sequence=self.sequence,
+            wp_type=self.wp_type,
+            station=self.station
         )
 
 
@@ -120,13 +112,13 @@ class Profile:
         self.db_interface = db_interface
 
         if profilename:
-            self.missions, self.waypoints, self.aircraft = self.db_interface.get_profile(profilename)
+            self.waypoints, self.aircraft = self.db_interface.get_profile(profilename)
         else:
-            self.missions, self.waypoints = list(), list()
+            self.waypoints, self.aircraft = dict(), "hornet"
 
     def update_sequences(self):
         sequences = set()
-        for waypoint in self.waypoints:
+        for waypoint in self.waypoints.get("WP", list()):
             if waypoint.sequence:
                 sequences.add(waypoint.sequence)
         sequences = list(sequences)
@@ -134,7 +126,7 @@ class Profile:
         return sequences
 
     def save(self, profilename=None):
-        if not self.waypoints and not self.missions:
+        if not self.waypoints:
             return
 
         if profilename is not None:
@@ -152,10 +144,30 @@ class Profile:
         return self.update_sequences()
 
     @property
+    def waypoints_as_list(self):
+        wps = list()
+        for wp_type, wp_list in self.waypoints.items():
+            if wp_type != "MSN":
+                for wp in wp_list:
+                    wps.append(wp)
+        return wps
+
+    @property
+    def msns_as_list(self):
+        msns = list()
+        stations = self.waypoints.get("MSN", dict())
+        for station, msn_list in stations.items():
+            for msn in msn_list:
+                wp = Wp(position=msn.position, elevation=msn.elevation, name=msn.name, station=station,
+                        wp_type="MSN")
+                msns.append(wp)
+        return msns
+
+    @property
     def sequences_dict(self):
         d = dict()
         for sequence_identifier in self.sequences:
-            for i, wp in enumerate(self.waypoints):
+            for i, wp in enumerate(self.waypoints_as_list):
                 if wp.sequence == sequence_identifier:
                     wp_list = d.get(sequence_identifier, list())
                     wp_list.append(i+1)

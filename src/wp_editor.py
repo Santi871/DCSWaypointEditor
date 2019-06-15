@@ -167,8 +167,7 @@ class AircraftInterface:
 
             for waypoint in waypointslist:
                 self.press.ufc("OSB4")
-                self.press.ufc(waypoint)
-                self.press.ufc("ENT")
+                self.enter_number(waypoint)
 
         self.press.ufc("CLR")
         self.press.ufc("CLR")
@@ -191,15 +190,33 @@ class AircraftInterface:
         self.press.ufc("CLR")
         self.press.ufc("CLR")
 
-    def enter_missions(self, msns):
-        if not msns:
-            return
+    def enter_missions(self, stations):
+        def stations_order(x):
+            if x == 8:
+                return 0
+            elif x == 2:
+                return 1
+            elif x == 7:
+                return 2
+            elif x == 3:
+                return 3
 
-        n = 1
-        for msn in msns:
-            self.enter_pp_msn(msn, n)
-            n += 1
+        sorted_stations = list()
 
+        for k in sorted(stations, key=stations_order):
+            sorted_stations.append(stations[k])
+
+        for msns in sorted_stations:
+            msns = msns[:6]
+            if not msns:
+                return
+
+            n = 1
+            for msn in msns:
+                self.enter_pp_msn(msn, n)
+                n += 1
+
+            self.press.lmdi("13")
         self.press.lmdi("6")
 
 
@@ -241,6 +258,6 @@ class WaypointEditor:
     def enter_all(self, profile):
         self.handler.set_driver(profile.aircraft)
         sleep(int(self.settings['PREFERENCES'].get('Grace_Period', 5)))
-        self.handler.enter_missions(profile.missions)
+        self.handler.enter_missions(profile.waypoints.get("MSN", dict()))
         sleep(1)
-        self.handler.enter_waypoints(profile.waypoints, profile.sequences_dict)
+        self.handler.enter_waypoints(profile.waypoints_as_list, profile.sequences_dict)

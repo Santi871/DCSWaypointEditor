@@ -1,4 +1,4 @@
-from src.objects import MSN, Wp
+from src.objects import Wp
 from src.logger import get_logger
 import src.pymgrs as mgrs
 import PySimpleGUI as PyGUI
@@ -13,6 +13,16 @@ import os
 import urllib.request
 import urllib.error
 import webbrowser
+import re
+
+
+def strike(text):
+    result = '\u0336'
+    for i, c in enumerate(text):
+        result = result + c
+        if i != len(text)-1:
+            result = result + '\u0336'
+    return result
 
 
 def detect_dcs_bios(dcs_path):
@@ -85,6 +95,7 @@ class GUI:
         self.editor = editor
         self.captured_map_coords = None
         self.profile = self.editor.get_profile('')
+        self.profile.aircraft = "hornet"
         self.exit_quick_capture = False
         self.values = None
         self.capturing = False
@@ -163,22 +174,25 @@ class GUI:
              PyGUI.Radio("MSN", group_id="wp_type", enable_events=True, key="MSN"),
              PyGUI.Radio("FP", group_id="wp_type", disabled=True),
              PyGUI.Radio("ST", group_id="wp_type", disabled=True)],
-            [PyGUI.Radio("IP", group_id="wp_type", disabled=True), PyGUI.Radio("DP", group_id="wp_type", disabled=True),
+            [PyGUI.Radio("IP", group_id="wp_type", disabled=True),
+             PyGUI.Radio("DP", group_id="wp_type", disabled=True),
              PyGUI.Radio("HA", group_id="wp_type", disabled=True)],
             [PyGUI.Button("Quick Capture", disabled=self.capture_button_disabled, key="quick_capture", pad=(5, (3, 8))),
-             PyGUI.Text("Sequence:", pad=((0, 1), 3)),
+             PyGUI.Text("Sequence:", pad=((0, 1), 3), key="sequence_text", auto_size_text=False, size=(8, 1)),
              PyGUI.Combo(values=("None", 1, 2, 3), default_value="None",
                          auto_size_text=False, size=(5, 1), readonly=True,
                          key="sequence")]
         ]
 
         frameactypelayout = [
-            [PyGUI.Radio("F/A-18C", group_id="ac_type", default=True), PyGUI.Radio("F-14A/B", group_id="ac_type",
-                                                                                   disabled=True),
-             PyGUI.Radio("M-2000C", group_id="ac_type", disabled=True), PyGUI.Radio("A-10C", group_id="ac_type",
-                                                                                    disabled=True),
-             PyGUI.Radio("AV-8B", group_id="ac_type", disabled=True)],
+            [
+                PyGUI.Radio("F/A-18C", group_id="ac_type", default=True, key="hornet", enable_events=True),
+                PyGUI.Radio("F-14A/B", group_id="ac_type", disabled=True, key="tomcat", enable_events=True),
+                PyGUI.Radio("M-2000C", group_id="ac_type", disabled=True, key="mirage", enable_events=True),
+                PyGUI.Radio("A-10C", group_id="ac_type", disabled=True, key="warthog", enable_events=True),
+                PyGUI.Radio("AV-8B", group_id="ac_type", disabled=True, key="harrier", enable_events=True)
             ]
+        ]
 
         framelongitude = PyGUI.Frame("Longitude", [[PyGUI.Column(longitude_col1), PyGUI.Column(longitude_col2),
                                                     PyGUI.Column(longitude_col3)]])
@@ -222,13 +236,13 @@ class GUI:
 
         col1 = [
             [PyGUI.Text("Select preset location")],
-            [PyGUI.Combo(values=[""] + [base.name for _, base in self.editor.default_bases.items()], readonly=True,
-                         enable_events=True, key='baseSelector')],
+            [PyGUI.Combo(values=[""] + [base.name for _, base in self.editor.default_bases.items()], readonly=False,
+                         enable_events=True, key='baseSelector'),
+             PyGUI.Button(button_text="F", key="filter")],
             [framedata, framewptype],
             [frameposition],
             [frameactype],
-            [PyGUI.Button("Open map in browser", key="map", visible=False),
-             PyGUI.Button("Enter into aircraft", key="enter")],
+            [PyGUI.Button("Enter into aircraft", key="enter")],
         ]
 
         colmain1 = [
@@ -241,7 +255,15 @@ class GUI:
 
         return PyGUI.Window('DCS Waypoint Editor', layout)
 
-    def update_position(self, position=None, elevation=None, name=None, update_mgrs=True):
+    def set_sequence_station_selector(self, mode):
+        if mode == "sequence":
+            self.window.Element("sequence_text").Update(value="Sequence:")
+            self.window.Element("sequence").Update(values=("None", 1, 2, 3), value="None")
+        elif mode == "station":
+            self.window.Element("sequence_text").Update(value="    Station:")
+            self.window.Element("sequence").Update(values=(2, 3, 7, 8), value=2)
+
+    def update_position(self, position=None, elevation=None, name=None, update_mgrs=True, aircraft=None):
 
         if position is not None:
             latdeg = round(position.lat.degree)
@@ -277,6 +299,8 @@ class GUI:
 
         self.window.Element("elevFeet").Update(elevation)
         self.window.Element("elevMeters").Update(round(elevation/3.281) if type(elevation) == int else "")
+        if aircraft is not None:
+            self.window.Element(aircraft).Update(value=True)
 
         if update_mgrs:
             self.window.Element("mgrs").Update(mgrs_str)
@@ -289,26 +313,43 @@ class GUI:
 
     def update_waypoints_list(self):
         values = list()
+        wp_types_limits = dict(
+            hornet=dict(WP=None, MSN=6),
+            tomcat=dict(WP=3, FP=1, ST=1, IP=1, DP=1, HA=1)
+        )
 
-        i = 1
-        for mission in self.profile.missions:
-            namestr = f"MSN{i}"
-            if mission.name:
-                namestr += f" | {mission.name}"
-            values.append(namestr)
-            i += 1
+        for wp_type, wp_list in self.profile.waypoints.items():
 
-        i = 1
-        for waypoint in self.profile.waypoints:
-            namestr = f"WP{i}"
-            if waypoint.sequence:
-                namestr += f" | SEQ{waypoint.sequence}"
+            if type(wp_list) == list:
+                for i, waypoint in enumerate(wp_list):
+                    namestr = f"{wp_type}{i+1}"
 
-            if waypoint.name:
-                namestr += f" | {waypoint.name}"
+                    if waypoint.sequence:
+                        namestr += f" | SEQ{waypoint.sequence}"
 
-            values.append(namestr)
-            i += 1
+                    if waypoint.name:
+                        namestr += f" | {waypoint.name}"
+
+                    if wp_type not in wp_types_limits[self.profile.aircraft] or \
+                            (wp_types_limits[self.profile.aircraft][wp_type] is not None
+                             and i + 1 > wp_types_limits[self.profile.aircraft][wp_type]):
+                        namestr = strike(namestr)
+
+                    values.append(namestr)
+
+            elif type(wp_list) == dict:
+                for station, station_msns in wp_list.items():
+                    for i, msn in enumerate(station_msns):
+                        namestr = f"MSN{i + 1}"
+                        namestr += f" | STA {station}"
+
+                        if msn.name:
+                            namestr += f" | {msn.name}"
+
+                        if "MSN" not in wp_types_limits[self.profile.aircraft]\
+                                or i + 1 > wp_types_limits[self.profile.aircraft]["MSN"]:
+                            namestr = strike(namestr)
+                        values.append(namestr)
 
         self.window.Element('activesList').Update(values=values)
 
@@ -322,17 +363,28 @@ class GUI:
                 ("latDeg", "latMin", "latSec", "lonDeg", "lonMin", "lonSec", "mgrs", "elevFeet", "elevMeters"):
             self.window.Element(element_name).Update(disabled=False)
 
-    def add_waypoint(self, position, elevation, name=None):
-        max_missions = 6
+    def filter_preset_waypoints_dropdown(self):
+        text = self.values["baseSelector"]
+        self.window.Element("baseSelector").\
+            Update(values=[""] + [base.name for _, base in self.editor.default_bases.items() if
+                                  text.lower() in base.name.lower()],
+                   set_to_index=0)
 
+    def add_waypoint(self, position, elevation, name=None):
         wpadded = False
         if name is None:
             name = str()
 
         try:
-            if self.values["MSN"] and len(self.profile.missions) < max_missions:
-                mission = MSN(position=position, elevation=int(elevation) or 0, name=name)
-                self.profile.missions.append(mission)
+            if self.values["MSN"]:
+                station = self.values.get("sequence", 0)
+                mission = Wp(position=position, elevation=int(elevation) or 0, name=name, wp_type="MSN",
+                             station=station)
+                stations = self.profile.waypoints.get("MSN", dict())
+                station_msns = stations.get(station, list())
+                station_msns.append(mission)
+                stations[station] = station_msns
+                self.profile.waypoints["MSN"] = stations
                 wpadded = True
 
             elif self.values["WP"]:
@@ -345,8 +397,10 @@ class GUI:
                 if sequence and len(self.profile.get_sequence(sequence)) >= 15:
                     return False
 
-                waypoint = Wp(position, elevation=int(elevation or 0), name=name, sequence=sequence)
-                self.profile.waypoints.append(waypoint)
+                waypoint = Wp(position, elevation=int(elevation or 0), name=name, sequence=sequence, wp_type="WP")
+                profile_waypoints = self.profile.waypoints.get("WP", list())
+                profile_waypoints.append(waypoint)
+                self.profile.waypoints["WP"] = profile_waypoints
 
                 if sequence not in self.profile.sequences:
                     self.profile.sequences.append(sequence)
@@ -480,6 +534,11 @@ class GUI:
             self.logger.error(f"Failed to validate coords: {e}")
             return None, None, None
 
+    def update_profiles_list(self, name):
+        profiles = self.editor.get_profile_names()
+        self.window.Element("profileSelector").Update(values=[""] + profiles,
+                                                      set_to_index=profiles.index(name) + 1)
+
     def run(self):
         while True:
             event, self.values = self.window.Read()
@@ -496,56 +555,43 @@ class GUI:
                     self.add_waypoint(position, elevation, name)
 
             elif event == "Remove":
-                if not len(self.values['activesList']):
-                    continue
-                ei = self.values['activesList'][0].find(' ')
-
-                if ei != -1:
-                    valuestr = self.values['activesList'][0][:ei]
-                else:
+                if self.values['activesList']:
                     valuestr = self.values['activesList'][0]
 
-                if "WP" in valuestr:
-                    i = int(valuestr[2:])
-                    self.profile.waypoints.pop(i-1)
-                else:
-                    i = int(valuestr[3:])
-                    self.profile.missions.pop(i-1)
+                    if "MSN" not in valuestr:
+                        i, = re.findall("(\\d)+", valuestr)
+                        self.profile.waypoints.get("WP", list()).pop(int(i)-1)
+                    else:
+                        i, station = re.findall("(\\d)+", valuestr)
+                        self.profile.waypoints.get("MSN", list())[int(station)].pop(int(i)-1)
 
-                self.update_waypoints_list()
+                    self.update_waypoints_list()
 
             elif event == "activesList":
-                if not len(self.values['activesList']):
-                    continue
-                ei = self.values['activesList'][0].find(' ')
-
-                if ei != -1:
-                    valuestr = self.values['activesList'][0][:ei]
-                else:
+                if self.values['activesList']:
                     valuestr = self.values['activesList'][0]
 
-                if "WP" in valuestr:
-                    i = int(valuestr[2:])
-                    mission = self.profile.waypoints[i - 1]
+                    if "MSN" not in valuestr:
+                        i, = re.findall("(\\d)+", valuestr)
+                        mission = self.profile.waypoints["WP"][int(i) - 1]
 
-                else:
-                    i = int(valuestr[3:])
-                    mission = self.profile.missions[i - 1]
+                    else:
+                        i, station = re.findall("(\\d)+", valuestr)
+                        mission = self.profile.waypoints["MSN"][int(station)][int(i) - 1]
 
-                self.update_position(mission.position, mission.elevation, mission.name)
+                    self.update_position(mission.position, mission.elevation, mission.name)
 
             elif event == "Save profile":
-                name = self.profile.profilename
-                if not name:
-                    name = PyGUI.PopupGetText("Enter profile name", "Saving profile")
+                if self.profile.waypoints:
+                    name = self.profile.profilename
+                    if not name:
+                        name = PyGUI.PopupGetText("Enter profile name", "Saving profile")
 
-                if not name:
-                    continue
+                    if not name:
+                        continue
 
-                self.profile.save(name)
-                profiles = self.editor.get_profile_names()
-                self.window.Element("profileSelector").Update(values=[""] + profiles,
-                                                              set_to_index=profiles.index(name)+1)
+                    self.profile.save(name)
+                    self.update_profiles_list(name)
 
             elif event == "Delete profile":
                 if not self.profile.profilename:
@@ -562,18 +608,13 @@ class GUI:
                 try:
                     self.profile = self.editor.get_profile(self.values['profileSelector'])
                     self.update_waypoints_list()
-                    try:
-                        first_waypoint = [*self.profile.waypoints, *self.profile.missions][0]
-                        self.update_position(first_waypoint.position, first_waypoint.elevation, first_waypoint.name)
-                    except IndexError:
-                        self.update_position()
 
                 except DoesNotExist:
                     PyGUI.Popup("Profile not found")
 
             elif event == "Export to file":
-                e = dict(missions=[mission.to_dict() for mission in self.profile.missions],
-                         waypoints=[waypoint.to_dict() for waypoint in self.profile.waypoints],
+                e = dict(waypoints=[waypoint.to_dict() for waypoint
+                                    in self.profile.waypoints_as_list + self.profile.msns_as_list],
                          name=self.profile.profilename, aircraft=self.profile.aircraft)
 
                 filename = PyGUI.PopupGetFile("Enter file name", "Exporting profile", default_extension=".json",
@@ -594,55 +635,36 @@ class GUI:
                 with open(filename, "r") as f:
                     d = json.load(f)
 
-                self.profile = self.editor.get_profile(d.get('name', str()))
-                self.profile.aircraft = d.get('aircraft')
-                self.profile.missions = [MSN(position=LatLon(Latitude(mission['latitude']),
-                                                             Longitude(mission['longitude'])),
-                                             name=mission['name'], elevation=mission['elevation'])
-                                         for mission in d.get('missions', list())]
-                self.profile.waypoints = [
-                    Wp(position=LatLon(Latitude(waypoint['latitude']), Longitude(waypoint['longitude'])),
-                       name=waypoint['name'],
-                       elevation=waypoint['elevation'],
-                       sequence=waypoint['sequence']) for waypoint in d.get('waypoints', list())]
+                self.profile = self.editor.get_profile("")
+                self.profile.aircraft = d.get('aircraft', "hornet")
 
+                waypoints = dict()
+                waypoints_list = d.get('waypoints', list())
+                for wp in waypoints_list:
+                    wp_object = Wp(position=LatLon(Latitude(wp['latitude']), Longitude(wp['longitude'])),
+                                   name=wp.get("name", ""),
+                                   elevation=wp['elevation'],
+                                   sequence=wp.get("sequence", 0),
+                                   wp_type=wp.get("wp_type", "WP"),
+                                   station=wp.get("station", 0))
+
+                    if wp.get("wp_type") != "MSN":
+                        wp_type_list = waypoints.get(wp.get("wp_type", "WP"), list())
+                        wp_type_list.append(wp_object)
+                        waypoints[wp.get("wp_type", "WP")] = wp_type_list
+                    else:
+                        stations = waypoints.get("MSN", dict())
+                        station = stations.get(wp_object.station, list())
+                        station.append(wp_object)
+                        stations[wp_object.station] = station
+                        waypoints["MSN"] = stations
+
+                self.profile.waypoints = waypoints
                 self.update_waypoints_list()
 
-            elif event == "map":
-                # temporarily disabled
-                """
-                if not self.profile.waypoints and not self.profile.missions:
-                    continue
-
-                lats = [waypoint.position.lat.degree for waypoint in self.profile.waypoints] + \
-                       [mission.position.lat.degree for mission in self.profile.missions]
-
-                lons = [waypoint.position.lon.degree for waypoint in self.profile.waypoints] + \
-                       [mission.position.lon.degree for mission in self.profile.missions]
-
-                lines = list()
-                for wp in self.profile.waypoints:
-                    if wp.sequence:
-                        lines.append([wp.position.lat.decimal_degree, wp.position.lon.decimal_degree])
-
-                m = folium.Map(location=[(max(lats) + min(lats)) / 2, (max(lons) + min(lons)) / 2], zoom_start=6)
-
-                if lines:
-                    folium.PolyLine(lines).add_to(m)
-
-                for waypoint in self.profile.waypoints:
-                    folium.Marker((waypoint.position.lat.decimal_degree, waypoint.position.lon.decimal_degree),
-                                  tooltip=waypoint.name or None).add_to(m)
-
-                for mission in self.profile.missions:
-                    folium.Marker((mission.position.lat.decimal_degree, mission.position.lon.decimal_degree),
-                                  tooltip=mission.name or None).add_to(m)
-
-                m.save("map.html")
-                directory = os.getcwd()
-                webbrowser.open(directory + "\\map.html")
-                """
-                pass
+                if d.get("name", ""):
+                    self.profile.save(d.get("name"))
+                    self.update_profiles_list(d.get("name"))
 
             elif event == "capture":
                 if not self.capturing:
@@ -673,15 +695,16 @@ class GUI:
                     self.update_position(base.position, base.elevation, base.name)
 
             elif event == "enter":
+                self.profile.aircraft = "hornet"
                 self.window.Element('enter').Update(disabled=True)
                 self.editor.enter_all(self.profile)
                 self.window.Element('enter').Update(disabled=False)
 
             elif event == "WP":
-                self.window.Element('sequence').Update(disabled=False)
+                self.set_sequence_station_selector("sequence")
 
-            elif event in ("MSN",):
-                self.window.Element('sequence').Update(disabled=True, set_to_index=0)
+            elif event in "MSN":
+                self.set_sequence_station_selector("station")
 
             elif event == "elevFeet":
                 self.update_altitude_elements("meters")
@@ -705,6 +728,13 @@ class GUI:
                 except (TypeError, ValueError) as e:
                     self.logger.error(f"Failed to decode MGRS: {e}")
 
+            elif event in ("hornet", "tomcat", "harrier", "warthog", "mirage"):
+                self.profile.aircraft = event
+                self.update_waypoints_list()
+
+            elif event == "filter":
+                self.filter_preset_waypoints_dropdown()
+
         self.close()
 
     def close(self):
@@ -715,4 +745,4 @@ class GUI:
 
         self.window.Close()
         self.editor.db.close()
-        self.editor.handler.press.stop()
+
