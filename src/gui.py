@@ -381,7 +381,7 @@ class GUI:
 
         try:
             if self.values["MSN"]:
-                station = self.values.get("sequence", 0)
+                station = int(self.values.get("sequence", 0))
                 mission = Wp(position=position, elevation=int(elevation) or 0, name=name, wp_type="MSN",
                              station=station)
                 stations = self.profile.waypoints.get("MSN", dict())
@@ -392,7 +392,7 @@ class GUI:
                 wpadded = True
 
             elif self.values["WP"]:
-                sequence = self.values["sequence"]
+                sequence = int(self.values["sequence"])
                 if sequence == "None":
                     sequence = 0
                 else:
@@ -563,11 +563,11 @@ class GUI:
                     valuestr = unstrike(self.values['activesList'][0])
 
                     if "MSN" not in valuestr:
-                        i, = re.findall("(\\d)+", valuestr)
+                        i, = re.search("(\\d)+", valuestr).group(0)
                         self.profile.waypoints.get("WP", list()).pop(int(i)-1)
                     else:
                         i, station = re.findall("(\\d)+", valuestr)
-                        self.profile.waypoints.get("MSN", list())[station].pop(int(i)-1)
+                        self.profile.waypoints.get("MSN", list())[int(station)].pop(int(i)-1)
 
                     self.update_waypoints_list()
 
@@ -576,12 +576,12 @@ class GUI:
                     valuestr = unstrike(self.values['activesList'][0])
 
                     if "MSN" not in valuestr:
-                        i, = re.findall("(\\d)+", valuestr)
+                        i = re.search("(\\d)+", valuestr).group(0)
                         mission = self.profile.waypoints["WP"][int(i) - 1]
 
                     else:
                         i, station = re.findall("(\\d)+", valuestr)
-                        mission = self.profile.waypoints["MSN"][station][int(i) - 1]
+                        mission = self.profile.waypoints["MSN"][int(station)][int(i) - 1]
 
                     self.update_position(mission.position, mission.elevation, mission.name)
 
