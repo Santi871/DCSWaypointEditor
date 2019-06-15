@@ -392,7 +392,7 @@ class GUI:
                 wpadded = True
 
             elif self.values["WP"]:
-                sequence = int(self.values["sequence"])
+                sequence = self.values["sequence"]
                 if sequence == "None":
                     sequence = 0
                 else:
@@ -566,7 +566,7 @@ class GUI:
                         i, = re.search("(\\d)+", valuestr).group(0)
                         self.profile.waypoints.get("WP", list()).pop(int(i)-1)
                     else:
-                        i, station = re.findall("(\\d)+", valuestr)
+                        i, station = re.findall("(\\d)+", valuestr)[:2]
                         self.profile.waypoints.get("MSN", list())[int(station)].pop(int(i)-1)
 
                     self.update_waypoints_list()
@@ -580,7 +580,7 @@ class GUI:
                         mission = self.profile.waypoints["WP"][int(i) - 1]
 
                     else:
-                        i, station = re.findall("(\\d)+", valuestr)
+                        i, station = re.findall("(\\d)+", valuestr)[:2]
                         mission = self.profile.waypoints["MSN"][int(station)][int(i) - 1]
 
                     self.update_position(mission.position, mission.elevation, mission.name)
