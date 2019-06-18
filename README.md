@@ -2,7 +2,10 @@
 
 Simple configurable script to input preplanned missions and waypoints coordinates into DCS aircraft. 
 
-Currently, only the DCS F/A-18C is supported, but other aircraft support is planned.
+Currently supported aircraft:
+
+* F/A-18C
+* AV-8B
 
 
 ## Installation
