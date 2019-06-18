@@ -56,9 +56,14 @@ at the desired position every time the F10 map capture keybind is pressed.
 You may select a position from a list of preset coordinates. Coordinates for all Caucasus and PG airfields and BlueFlag
 FARPS are included.
 
+#### Hornet JDAM preplanned missions
+
+Hornet JDAM preplanned missions work in a similar way to waypoints, however, you **must** select the correct station
+for the mission to be assigned using the station selector.
+
 #### Entering a list of waypoints into your aircraft
 
-Currently, this feature is only supported in the F/A-18C Hornet.
+##### F/A-18C
 
 1. Make sure the main HSI page is on the AMPCD (bottom screen) if you are entering waypoints.
  
@@ -69,6 +74,14 @@ Currently, this feature is only supported in the F/A-18C Hornet.
 3. With a list of active waypoints and/or JDAM preplanned missions, click `Enter into aircraft`
 
 4. Tab back into DCS and let it enter everything
+
+##### AV-8B
+
+1. Make sure the main EHSD page is on the left AMPCD (left screen).
+
+2. With a list of active waypoints, click `Enter into aircraft`
+
+3. Tab back into DCS and let it enter everything
 
 #### Profile saving
 
