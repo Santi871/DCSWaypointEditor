@@ -191,10 +191,10 @@ class GUI:
         frameactypelayout = [
             [
                 PyGUI.Radio("F/A-18C", group_id="ac_type", default=True, key="hornet", enable_events=True),
+                PyGUI.Radio("AV-8B", group_id="ac_type", disabled=False, key="harrier", enable_events=True),
                 PyGUI.Radio("F-14A/B", group_id="ac_type", disabled=True, key="tomcat", enable_events=True),
                 PyGUI.Radio("M-2000C", group_id="ac_type", disabled=True, key="mirage", enable_events=True),
                 PyGUI.Radio("A-10C", group_id="ac_type", disabled=True, key="warthog", enable_events=True),
-                PyGUI.Radio("AV-8B", group_id="ac_type", disabled=False, key="harrier", enable_events=True)
             ]
         ]
 
