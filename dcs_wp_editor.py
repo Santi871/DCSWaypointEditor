@@ -27,7 +27,7 @@ def main():
 
     if setup_completed:
         generate_default_bases()
-        log_settings()
+        log_settings(version)
         settings = ConfigParser()
         settings.read("settings.ini")
         editor = WaypointEditor(settings)
