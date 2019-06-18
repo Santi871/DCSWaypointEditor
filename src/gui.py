@@ -185,7 +185,7 @@ class GUI:
              PyGUI.Text("Sequence:", pad=((0, 1), 3), key="sequence_text", auto_size_text=False, size=(8, 1)),
              PyGUI.Combo(values=("None", 1, 2, 3), default_value="None",
                          auto_size_text=False, size=(5, 1), readonly=True,
-                         key="sequence")]
+                         key="sequence", enable_events=True)]
         ]
 
         frameactypelayout = [
@@ -231,7 +231,7 @@ class GUI:
             [PyGUI.Combo(values=[""] + self.editor.get_profile_names(), readonly=True,
                          enable_events=True, key='profileSelector', size=(27, 1))],
             [PyGUI.Listbox(values=list(), size=(30, 24), enable_events=True, key='activesList')],
-            [PyGUI.Button("Add", size=(26, 1))],
+            [PyGUI.Button("Add", size=(12, 1)), PyGUI.Button("Update", size=(12, 1))],
             [PyGUI.Button("Remove", size=(26, 1))],
             [PyGUI.Button("Save profile", size=(12, 1)), PyGUI.Button("Delete profile", size=(12, 1))],
             [PyGUI.Button("Export to file", size=(12, 1)), PyGUI.Button("Import from file", size=(12, 1))],
@@ -265,7 +265,7 @@ class GUI:
             self.window.Element("sequence").Update(values=("None", 1, 2, 3), value="None")
         elif mode == "station":
             self.window.Element("sequence_text").Update(value="    Station:")
-            self.window.Element("sequence").Update(values=(2, 3, 7, 8), value=2)
+            self.window.Element("sequence").Update(values=(8, 2, 7, 3), value=8)
 
     def update_position(self, position=None, elevation=None, name=None, update_mgrs=True, aircraft=None):
 
@@ -531,7 +531,7 @@ class GUI:
             position = LatLon(Latitude(degree=lat_deg, minute=lat_min, second=lat_sec),
                               Longitude(degree=lon_deg, minute=lon_min, second=lon_sec))
 
-            elevation = self.window.Element("elevFeet").Get()
+            elevation = int(self.window.Element("elevFeet").Get())
             name = self.window.Element("msnName").Get()
             return position, elevation, name
         except ValueError as e:
@@ -542,6 +542,29 @@ class GUI:
         profiles = self.editor.get_profile_names()
         self.window.Element("profileSelector").Update(values=[""] + profiles,
                                                       set_to_index=profiles.index(name) + 1)
+
+    def find_selected_waypoint(self):
+        # TODO update regex
+        valuestr = unstrike(self.values['activesList'][0])
+        if "MSN" not in valuestr:
+            i = re.search("(\\d)+", valuestr).group(0)
+            mission = self.profile.waypoints["WP"][int(i) - 1]
+        else:
+            i, station = re.findall("(\\d)+", valuestr)[:2]
+            mission = self.profile.waypoints["MSN"][int(station)][int(i) - 1]
+
+        return mission
+
+    def remove_selected_waypoint(self):
+        # TODO update regex
+        valuestr = unstrike(self.values['activesList'][0])
+
+        if "MSN" not in valuestr:
+            i, = re.search("(\\d)+", valuestr).group(0)
+            self.profile.waypoints.get("WP", list()).pop(int(i) - 1)
+        else:
+            i, station = re.findall("(\\d)+", valuestr)[:2]
+            self.profile.waypoints.get("MSN", list())[int(station)].pop(int(i) - 1)
 
     def run(self):
         while True:
@@ -558,32 +581,25 @@ class GUI:
                 if position is not None:
                     self.add_waypoint(position, elevation, name)
 
+            elif event == "Update":
+                if self.values['activesList']:
+                    waypoint = self.find_selected_waypoint()
+                    position, elevation, name = self.validate_coords()
+                    if position is not None:
+                        waypoint.position = position
+                        waypoint.elevation = elevation
+                        waypoint.name = name
+                        self.update_waypoints_list()
+
             elif event == "Remove":
                 if self.values['activesList']:
-                    valuestr = unstrike(self.values['activesList'][0])
-
-                    if "MSN" not in valuestr:
-                        i, = re.search("(\\d)+", valuestr).group(0)
-                        self.profile.waypoints.get("WP", list()).pop(int(i)-1)
-                    else:
-                        i, station = re.findall("(\\d)+", valuestr)[:2]
-                        self.profile.waypoints.get("MSN", list())[int(station)].pop(int(i)-1)
-
+                    self.remove_selected_waypoint()
                     self.update_waypoints_list()
 
             elif event == "activesList":
                 if self.values['activesList']:
-                    valuestr = unstrike(self.values['activesList'][0])
-
-                    if "MSN" not in valuestr:
-                        i = re.search("(\\d)+", valuestr).group(0)
-                        mission = self.profile.waypoints["WP"][int(i) - 1]
-
-                    else:
-                        i, station = re.findall("(\\d)+", valuestr)[:2]
-                        mission = self.profile.waypoints["MSN"][int(station)][int(i) - 1]
-
-                    self.update_position(mission.position, mission.elevation, mission.name)
+                    waypoint = self.find_selected_waypoint()
+                    self.update_position(waypoint.position, waypoint.elevation, waypoint.name)
 
             elif event == "Save profile":
                 if self.profile.waypoints:
@@ -725,12 +741,13 @@ class GUI:
 
             elif event == "mgrs":
                 mgrs_string = self.window.Element("mgrs").Get()
-                try:
-                    decoded_mgrs = mgrs.UTMtoLL(mgrs.decode(mgrs_string))
-                    position = LatLon(Latitude(degree=decoded_mgrs["lat"]), Longitude(degree=decoded_mgrs["lon"]))
-                    self.update_position(position, update_mgrs=False)
-                except (TypeError, ValueError) as e:
-                    self.logger.error(f"Failed to decode MGRS: {e}")
+                if mgrs_string:
+                    try:
+                        decoded_mgrs = mgrs.UTMtoLL(mgrs.decode(mgrs_string))
+                        position = LatLon(Latitude(degree=decoded_mgrs["lat"]), Longitude(degree=decoded_mgrs["lon"]))
+                        self.update_position(position, update_mgrs=False)
+                    except (TypeError, ValueError) as e:
+                        self.logger.error(f"Failed to decode MGRS: {e}")
 
             elif event in ("hornet", "tomcat", "harrier", "warthog", "mirage"):
                 self.profile.aircraft = event
