@@ -296,7 +296,7 @@ class WaypointEditor:
     def enter_all(self, profile):
         self.handler.set_driver(profile.aircraft)
         sleep(int(self.settings['PREFERENCES'].get('Grace_Period', 5)))
-        if type(self.handler) == HornetDriver:
+        if type(self.handler.press) == HornetDriver:
             self.handler.enter_missions(profile.waypoints.get("MSN", dict()))
             sleep(1)
         self.handler.enter_waypoints(profile.waypoints_as_list, profile.sequences_dict)
