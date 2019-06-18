@@ -194,7 +194,7 @@ class GUI:
                 PyGUI.Radio("F-14A/B", group_id="ac_type", disabled=True, key="tomcat", enable_events=True),
                 PyGUI.Radio("M-2000C", group_id="ac_type", disabled=True, key="mirage", enable_events=True),
                 PyGUI.Radio("A-10C", group_id="ac_type", disabled=True, key="warthog", enable_events=True),
-                PyGUI.Radio("AV-8B", group_id="ac_type", disabled=True, key="harrier", enable_events=True)
+                PyGUI.Radio("AV-8B", group_id="ac_type", disabled=False, key="harrier", enable_events=True)
             ]
         ]
 
@@ -319,7 +319,8 @@ class GUI:
         values = list()
         wp_types_limits = dict(
             hornet=dict(WP=None, MSN=6),
-            tomcat=dict(WP=3, FP=1, ST=1, IP=1, DP=1, HA=1)
+            tomcat=dict(WP=3, FP=1, ST=1, IP=1, DP=1, HA=1),
+            harrier=dict(WP=None)
         )
 
         for wp_type, wp_list in self.profile.waypoints.items():
@@ -356,6 +357,7 @@ class GUI:
                         values.append(namestr)
 
         self.window.Element('activesList').Update(values=values)
+        self.window.Element(self.profile.aircraft).Update(value=True)
 
     def disable_coords_input(self):
         for element_name in\
@@ -715,7 +717,6 @@ class GUI:
                     self.update_position(base.position, base.elevation, base.name)
 
             elif event == "enter":
-                self.profile.aircraft = "hornet"
                 self.window.Element('enter').Update(disabled=True)
                 self.editor.enter_all(self.profile)
                 self.window.Element('enter').Update(disabled=False)

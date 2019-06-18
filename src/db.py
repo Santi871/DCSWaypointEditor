@@ -1,4 +1,4 @@
-from src.models import ProfileModel, WaypointModel, SequenceModel, db
+from src.models import ProfileModel, WaypointModel, SequenceModel, db, IntegrityError
 from src.objects import Wp
 from src.logger import get_logger
 from LatLon23 import LatLon, Latitude, Longitude
@@ -49,7 +49,12 @@ class DatabaseInterface:
         delete_list = list()
         sequences_db_instances = dict()
 
-        profile, _ = ProfileModel.get_or_create(name=profileinstance.profilename, aircraft=profileinstance.aircraft)
+        try:
+            with db.atomic():
+                profile = ProfileModel.create(name=profileinstance.profilename, aircraft=profileinstance.aircraft)
+        except IntegrityError:
+            profile = ProfileModel.get(ProfileModel.name == profileinstance.profilename)
+        profile.aircraft = profileinstance.aircraft
 
         for waypoint in profile.waypoints:
             delete_list.append(waypoint)
