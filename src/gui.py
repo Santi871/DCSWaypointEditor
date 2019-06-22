@@ -14,6 +14,8 @@ import urllib.request
 import urllib.error
 import webbrowser
 import re
+import base64
+import pyperclip
 
 
 def strike(text):
@@ -120,6 +122,8 @@ class GUI:
 
         self.logger.info(f"Tesseract version is: {self.tesseract_version}")
         self.window = self.create_gui()
+        keyboard.add_hotkey('ctrl+c', self.export_to_string, timeout=1)
+        keyboard.add_hotkey('ctrl+v', self.import_from_string, timeout=1)
 
     def exit_capture(self):
         self.exit_quick_capture = True
@@ -429,6 +433,26 @@ class GUI:
             self.logger.info("Raw captured text: " + captured_map_coords)
         return captured_map_coords
 
+    def export_to_string(self):
+        e = dict(waypoints=[waypoint.to_dict() for waypoint in self.profile.waypoints_as_list + self.profile.msns_as_list])
+
+        dump = json.dumps(e)
+        encoded = base64.b64encode(dump.encode('utf-8'))
+        pyperclip.copy(encoded.decode('utf-8'))
+        
+
+    def import_from_string(self):
+        # Load the encoded string from the clipboard
+        encoded = pyperclip.paste()
+        decoded = base64.b64decode(encoded.encode('utf-8'))
+        e = json.loads(decoded)
+        self.logger.debug(e)
+        try:
+            self.profile.waypoints = e["waypoints"]
+        except Exception as e:
+            PyGUI.Popup('Failed to parse profile from string')
+
+
     def parse_map_coords_string(self, coords_string):
         split_string = coords_string.split(',')
 
@@ -639,6 +663,8 @@ class GUI:
                                     in self.profile.waypoints_as_list + self.profile.msns_as_list],
                          name=self.profile.profilename, aircraft=self.profile.aircraft)
 
+
+
                 filename = PyGUI.PopupGetFile("Enter file name", "Exporting profile", default_extension=".json",
                                               save_as=True, file_types=(("JSON File", "*.json"),))
 
@@ -646,7 +672,7 @@ class GUI:
                     continue
 
                 with open(filename + ".json", "w+") as f:
-                    json.dump(e, f, indent=4)
+                    json.dump(e, f, indent=4)                
 
             elif event == "Import from file":
                 filename = PyGUI.PopupGetFile("Enter file name", "Importing profile")
