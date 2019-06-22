@@ -5,3 +5,4 @@ PySimpleGUI
 LatLon23
 keyboard
 SLPP-23
+pyperclip
