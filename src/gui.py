@@ -1,21 +1,22 @@
-from src.objects import Wp
+from src.objects import Wp, Profile
 from src.logger import get_logger
-import src.pymgrs as mgrs
-import PySimpleGUI as PyGUI
 from peewee import DoesNotExist
 from LatLon23 import LatLon, Longitude, Latitude, string2latlon
-import json
 from PIL import ImageGrab, ImageEnhance, ImageOps
+from pathlib import Path
 import pytesseract
 import keyboard
-from pathlib import Path
 import os
+import json
 import urllib.request
 import urllib.error
 import webbrowser
 import re
 import base64
 import pyperclip
+
+import src.pymgrs as mgrs
+import PySimpleGUI as PyGUI
 
 
 def strike(text):
@@ -103,7 +104,7 @@ class GUI:
         self.logger = get_logger("gui")
         self.editor = editor
         self.captured_map_coords = None
-        self.profile = self.editor.get_profile('')
+        self.profile = Profile('')
         self.profile.aircraft = "hornet"
         self.exit_quick_capture = False
         self.values = None
@@ -206,11 +207,16 @@ class GUI:
 
         frameactypelayout = [
             [
-                PyGUI.Radio("F/A-18C", group_id="ac_type", default=True, key="hornet", enable_events=True),
-                PyGUI.Radio("AV-8B", group_id="ac_type", disabled=False, key="harrier", enable_events=True),
-                PyGUI.Radio("M-2000C", group_id="ac_type", disabled=False, key="mirage", enable_events=True),
-                PyGUI.Radio("F-14A/B", group_id="ac_type", disabled=True, key="tomcat", enable_events=True),
-                PyGUI.Radio("A-10C", group_id="ac_type", disabled=True, key="warthog", enable_events=True),
+                PyGUI.Radio("F/A-18C", group_id="ac_type",
+                            default=True, key="hornet", enable_events=True),
+                PyGUI.Radio("AV-8B", group_id="ac_type",
+                            disabled=False, key="harrier", enable_events=True),
+                PyGUI.Radio("M-2000C", group_id="ac_type",
+                            disabled=False, key="mirage", enable_events=True),
+                PyGUI.Radio("F-14A/B", group_id="ac_type",
+                            disabled=True, key="tomcat", enable_events=True),
+                PyGUI.Radio("A-10C", group_id="ac_type",
+                            disabled=True, key="warthog", enable_events=True),
             ]
         ]
 
@@ -479,7 +485,7 @@ class GUI:
             PyGUI.Popup('Failed to parse profile from string')
 
     def load_new_profile(self, waypoints):
-        self.profile = self.editor.get_profile("")
+        self.profile = Profile('')
 
     def parse_map_coords_string(self, coords_string):
         split_string = coords_string.split(',')
@@ -682,18 +688,18 @@ class GUI:
                 if not self.profile.profilename:
                     continue
 
-                self.profile.delete()
+                Profile.delete(self.profile.profilename)
                 profiles = self.editor.get_profile_names()
                 self.window.Element("profileSelector").Update(
                     values=[""] + profiles)
-                self.profile = self.editor.get_profile("")
+                self.profile = Profile('')
                 self.update_waypoints_list()
                 self.update_position()
 
             elif event == "profileSelector":
                 try:
-                    self.profile = self.editor.get_profile(
-                        self.values['profileSelector'])
+                    profile_name = self.values['profileSelector']
+                    self.profile = Profile.load(profile_name)
                     self.update_waypoints_list()
 
                 except DoesNotExist:
@@ -721,7 +727,7 @@ class GUI:
                 with open(filename, "r") as f:
                     d = json.load(f)
 
-                self.profile = self.editor.get_profile("")
+                self.profile = Profile('')
                 self.profile.aircraft = d.get('aircraft', "hornet")
 
                 waypoints = dict()

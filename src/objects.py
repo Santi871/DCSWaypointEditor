@@ -11,6 +11,8 @@ from src.models import ProfileModel, WaypointModel, SequenceModel, IntegrityErro
 
 default_bases = dict()
 
+logger = get_logger(__name__)
+
 
 def update_base_data(url, file):
     with urllib.request.urlopen(url) as response:
@@ -114,7 +116,7 @@ class Wp:
 
 
 class Profile:
-    def __init__(self, profilename, waypoints=[], aircraft="hornet"):
+    def __init__(self, profilename, waypoints={'WP': [], 'MSN': {}}, aircraft="hornet"):
         self.profilename = profilename
         self.waypoints = waypoints
         self.aircraft = aircraft
@@ -129,7 +131,7 @@ class Profile:
         return sequences
 
     def has_waypoints(self):
-        return len(self.waypoints) > 0
+        return len(self.waypoints.get('WP') > 0) or len(self.waypoints.get('MSN') > 0)
 
     @property
     def sequences(self):
@@ -225,4 +227,49 @@ class Profile:
                             wp_type=waypoint.wp_type,
                             station=station
                         )
+
+    @staticmethod
+    def load(profile_name):
+        profile = ProfileModel.get(ProfileModel.name == profile_name)
+        aircraft = profile.aircraft
+
+        wps = dict()
+        for waypoint in profile.waypoints:
+            if waypoint.wp_type == "MSN":
+                wps_list = wps.get(waypoint.wp_type, dict()).get(
+                    waypoint.station, list())
+            else:
+                wps_list = wps.get(waypoint.wp_type, list())
+
+            if waypoint.sequence:
+                sequence = waypoint.sequence.identifier
+            else:
+                sequence = None
+
+            wp = Wp(LatLon(Latitude(waypoint.latitude), Longitude(waypoint.longitude)),
+                    elevation=waypoint.elevation, name=waypoint.name, sequence=sequence,
+                    wp_type=waypoint.wp_type, station=waypoint.station)
+
+            if waypoint.wp_type == "MSN":
+                stations = wps.get("MSN", dict())
+                station = stations.get(waypoint.station, list())
+                station.append(wp)
+                stations[waypoint.station] = station
+                wps["MSN"] = stations
+            else:
+                wps_list.append(wp)
+                wps[waypoint.wp_type] = wps_list
+
+        logger.debug(f"Fetched {profile_name} from DB, with {len(wps)} waypoints")
+        return Profile(profile_name, waypoints=wps, aircraft=aircraft)
+
+    @staticmethod
+    def delete(profile_name):
+        profile = ProfileModel.get(name=profile_name)
+
+        for waypoint in profile.waypoints:
+            waypoint.delete_instance()
+
+        profile.delete_instance(recursive=True)
+
 
