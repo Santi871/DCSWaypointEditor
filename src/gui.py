@@ -699,7 +699,10 @@ class GUI:
             elif event == "profileSelector":
                 try:
                     profile_name = self.values['profileSelector']
-                    self.profile = Profile.load(profile_name)
+                    if profile_name != '':
+                        self.profile = Profile.load(profile_name)
+                    else:
+                        self.profile = Profile('')
                     self.update_waypoints_list()
 
                 except DoesNotExist:

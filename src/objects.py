@@ -6,7 +6,7 @@ import urllib.request
 from os import walk, path
 from src.logger import get_logger
 
-from src.models import ProfileModel, WaypointModel, SequenceModel, IntegrityError
+from src.models import ProfileModel, WaypointModel, SequenceModel, IntegrityError, db
 
 
 default_bases = dict()
@@ -191,8 +191,22 @@ class Profile:
             raise ValueError("Failed to load profile from data")
 
     def save(self, profile_name):
-        profile = ProfileModel.create(
-            name=profile_name, aircraft=self.aircraft)
+        delete_list = list()
+
+        try:
+            with db.atomic():
+                profile = ProfileModel.create(
+                    name=self.profilename, aircraft=self.aircraft)
+        except IntegrityError:
+            profile = ProfileModel.get(
+                ProfileModel.name == self.profilename)
+        profile.aircraft = self.aircraft
+
+        for waypoint in profile.waypoints:
+            delete_list.append(waypoint)
+
+        for sequence in profile.sequences:
+            delete_list.append(sequence)
 
         sequences_db_instances = dict()
         for sequencenumber in self.sequences:
@@ -228,6 +242,10 @@ class Profile:
                             station=station
                         )
 
+        for instance in delete_list:
+            instance.delete_instance()
+        profile.save()
+
     @staticmethod
     def load(profile_name):
         profile = ProfileModel.get(ProfileModel.name == profile_name)
@@ -260,7 +278,8 @@ class Profile:
                 wps_list.append(wp)
                 wps[waypoint.wp_type] = wps_list
 
-        logger.debug(f"Fetched {profile_name} from DB, with {len(wps)} waypoints")
+        logger.debug(
+            f"Fetched {profile_name} from DB, with {len(wps)} waypoints")
         return Profile(profile_name, waypoints=wps, aircraft=aircraft)
 
     @staticmethod
@@ -271,5 +290,3 @@ class Profile:
             waypoint.delete_instance()
 
         profile.delete_instance(recursive=True)
-
-
