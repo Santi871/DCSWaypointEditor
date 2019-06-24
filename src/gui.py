@@ -206,16 +206,11 @@ class GUI:
 
         frameactypelayout = [
             [
-                PyGUI.Radio("F/A-18C", group_id="ac_type",
-                            default=True, key="hornet", enable_events=True),
-                PyGUI.Radio("AV-8B", group_id="ac_type",
-                            disabled=False, key="harrier", enable_events=True),
-                PyGUI.Radio("F-14A/B", group_id="ac_type",
-                            disabled=True, key="tomcat", enable_events=True),
-                PyGUI.Radio("M-2000C", group_id="ac_type",
-                            disabled=True, key="mirage", enable_events=True),
-                PyGUI.Radio("A-10C", group_id="ac_type",
-                            disabled=True, key="warthog", enable_events=True),
+                PyGUI.Radio("F/A-18C", group_id="ac_type", default=True, key="hornet", enable_events=True),
+                PyGUI.Radio("AV-8B", group_id="ac_type", disabled=False, key="harrier", enable_events=True),
+                PyGUI.Radio("M-2000C", group_id="ac_type", disabled=False, key="mirage", enable_events=True),
+                PyGUI.Radio("F-14A/B", group_id="ac_type", disabled=True, key="tomcat", enable_events=True),
+                PyGUI.Radio("A-10C", group_id="ac_type", disabled=True, key="warthog", enable_events=True),
             ]
         ]
 
@@ -351,8 +346,10 @@ class GUI:
         wp_types_limits = dict(
             hornet=dict(WP=None, MSN=6),
             tomcat=dict(WP=3, FP=1, ST=1, IP=1, DP=1, HA=1),
-            harrier=dict(WP=None)
+            harrier=dict(WP=None),
+            mirage=dict(WP=9)
         )
+        # TODO apply these limits when entering into aircraft
 
         for wp_type, wp_list in self.profile.waypoints.items():
 
@@ -843,4 +840,8 @@ class GUI:
             pass
 
         self.window.Close()
+<<<<<<< HEAD
         self.editor.db.close()
+=======
+        self.editor.stop()
+>>>>>>> upstream/master

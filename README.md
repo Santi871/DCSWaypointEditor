@@ -6,6 +6,7 @@ Currently supported aircraft:
 
 * F/A-18C
 * AV-8B
+* M-2000C
 
 
 ## Installation
@@ -85,6 +86,12 @@ for the mission to be assigned using the station selector.
 2. With a list of active waypoints, click `Enter into aircraft`
 
 3. Tab back into DCS and let it enter everything
+
+##### M-2000C
+
+1. With a list of active waypoints, click `Enter into aircraft`
+
+2. Tab back into DCS and let it enter everything
 
 #### Profile saving
 
