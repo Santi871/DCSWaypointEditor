@@ -1,7 +1,6 @@
-from peewee import *
+from peewee import Model, IntegerField, CharField, ForeignKeyField, FloatField, SqliteDatabase
 
 db = SqliteDatabase(None, pragmas={'foreign_keys': 1})
-
 
 class ProfileModel(Model):
     name = CharField(unique=True)

@@ -6,6 +6,8 @@ import urllib.request
 from os import walk, path
 from src.logger import get_logger
 
+from models import ProfileModel, WaypointModel, SequenceModel
+
 
 default_bases = dict()
 
@@ -112,15 +114,10 @@ class Wp:
 
 
 class Profile:
-    def __init__(self, profilename, db_interface, waypoints=None, aircraft="hornet"):
+    def __init__(self, profilename, waypoints=[], aircraft="hornet"):
         self.profilename = profilename
-        self.db_interface = db_interface
-
-        if profilename:
-            self.waypoints, self.aircraft = self.db_interface.get_profile(
-                profilename)
-        else:
-            self.waypoints, self.aircraft = dict(), "hornet"
+        self.waypoints = waypoints
+        self.aircraft = aircraft
 
     def update_sequences(self):
         sequences = set()
@@ -131,19 +128,8 @@ class Profile:
         sequences.sort()
         return sequences
 
-    def save(self, profilename=None):
-        if not self.waypoints:
-            return
-
-        if profilename is not None:
-            self.profilename = profilename
-
-        if profilename:
-            self.db_interface.save_profile(self)
-            self.profilename = profilename
-
-    def delete(self):
-        self.db_interface.delete_profile(self.profilename)
+    def has_waypoints(self):
+        return len(self.waypoints) > 0
 
     @property
     def sequences(self):
@@ -186,12 +172,56 @@ class Profile:
 
     def to_dict(self):
         return dict(
-            waypoints=[waypoint.to_dict(
-            ) for waypoint in self.profile.waypoints_as_list + self.profile.msns_as_list],
-            name=self.profile.profilename,
-            aircraft=self.profile.aircraft
+            waypoints=[waypoint.to_dict()
+                       for waypoint in self.waypoints_as_list + self.msns_as_list],
+            name=self.profilename,
+            aircraft=self.aircraft
         )
 
     @staticmethod
     def to_object(profile_data):
-        return Profile()
+        try:
+            profile_name = profile_data["name"]
+            waypoints = profile_data["waypoints"]
+            aircraft = profile_data["aircraft"]
+            return Profile(profile_name, waypoints=waypoints, aircraft=aircraft)
+        except:
+            raise ValueError("Failed to load profile from data")
+
+    def save(self, profile_name):
+        profile = ProfileModel.create(
+            name=profile_name, aircraft=self.aircraft)
+
+        sequences_db_instances = dict()
+        for sequencenumber in self.sequences:
+            sequence_db_instance = SequenceModel.create(
+                identifier=sequencenumber,
+                profile=profile
+            )
+            sequences_db_instances[sequencenumber] = sequence_db_instance
+
+        for wp_type, wp_list in self.waypoints.items():
+            if wp_type != "MSN":
+                for waypoint in wp_list:
+                    sequence = sequences_db_instances.get(waypoint.sequence)
+                    WaypointModel.create(
+                        name=waypoint.name,
+                        latitude=waypoint.position.lat.decimal_degree,
+                        longitude=waypoint.position.lon.decimal_degree,
+                        elevation=waypoint.elevation,
+                        profile=profile,
+                        sequence=sequence,
+                        wp_type=waypoint.wp_type
+                    )
+            else:
+                for station, station_wps in wp_list.items():
+                    for waypoint in station_wps:
+                        WaypointModel.create(
+                            name=waypoint.name,
+                            latitude=waypoint.position.lat.decimal_degree,
+                            longitude=waypoint.position.lon.decimal_degree,
+                            elevation=waypoint.elevation,
+                            profile=profile,
+                            wp_type=waypoint.wp_type,
+                            station=station
+                        )

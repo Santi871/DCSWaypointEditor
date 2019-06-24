@@ -463,8 +463,7 @@ class GUI:
         return captured_map_coords
 
     def export_to_string(self):
-        e = dict(waypoints=[waypoint.to_dict() for waypoint in self.profile.waypoints_as_list + self.profile.msns_as_list]
-                 aircraft=self.profile.aircraft)
+        e = self.profile.to_dict()
 
         dump = json.dumps(e)
         encoded = base64.b64encode(dump.encode('utf-8'))
