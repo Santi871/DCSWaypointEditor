@@ -87,7 +87,8 @@ class AircraftInterface:
 
     def enter_coords(self, latlong, elev, pp, decimal_minutes_mode=False):
         if type(self.press) == HornetDriver:
-            lat_str, lon_str = latlon_tostring(latlong, decimal_minutes_mode=decimal_minutes_mode)
+            lat_str, lon_str = latlon_tostring(
+                latlong, decimal_minutes_mode=decimal_minutes_mode)
             self.logger.debug(f"Entering coords string: {lat_str}, {lon_str}")
 
             if not pp:
@@ -135,7 +136,8 @@ class AircraftInterface:
                     self.enter_number(elev)
 
         elif type(self.press) == HarrierDriver:
-            lat_str, lon_str = latlon_tostring(latlong, decimal_minutes_mode=False, easting_zfill=3)
+            lat_str, lon_str = latlon_tostring(
+                latlong, decimal_minutes_mode=False, easting_zfill=3)
             self.logger.debug(f"Entering coords string: {lat_str}, {lon_str}")
 
             if latlong.lat.degree > 0:
@@ -178,7 +180,8 @@ class AircraftInterface:
                 self.press.ampcd("12")
                 self.press.ampcd("5")
                 self.press.ufc("OSB1")
-                self.enter_coords(wp.position, wp.elevation, pp=False, decimal_minutes_mode=True)
+                self.enter_coords(wp.position, wp.elevation,
+                                  pp=False, decimal_minutes_mode=True)
                 self.press.ufc("CLR")
 
             for sequencenumber, waypointslist in sequences.items():
@@ -264,7 +267,8 @@ class WaypointEditor:
         self.logger = get_logger("editor")
         self.settings = settings
         self.handler = AircraftInterface(settings)
-        self.db = DatabaseInterface(settings['PREFERENCES'].get("DB_Name", "profiles.db"))
+        self.db = DatabaseInterface(
+            settings['PREFERENCES'].get("DB_Name", "profiles.db"))
         self.default_bases = default_bases
         self.wps_list = list()
         self.msns_list = list()
@@ -299,4 +303,5 @@ class WaypointEditor:
         if type(self.handler.press) == HornetDriver:
             self.handler.enter_missions(profile.waypoints.get("MSN", dict()))
             sleep(1)
-        self.handler.enter_waypoints(profile.waypoints_as_list, profile.sequences_dict)
+        self.handler.enter_waypoints(
+            profile.waypoints_as_list, profile.sequences_dict)

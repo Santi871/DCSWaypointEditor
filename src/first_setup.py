@@ -15,7 +15,8 @@ def install_dcs_bios(dcs_path):
 
     with open(dcs_path + "Scripts\\Export.lua", "a") as f:
         if "dofile(lfs.writedir()..[[Scripts\\DCS-BIOS\\BIOS.lua]])" not in filestr:
-            f.write("\ndofile(lfs.writedir()..[[Scripts\\DCS-BIOS\\BIOS.lua]])\n")
+            f.write(
+                "\ndofile(lfs.writedir()..[[Scripts\\DCS-BIOS\\BIOS.lua]])\n")
 
     copytree(".\\DCS-BIOS", dcs_path + "Scripts\\DCS-BIOS")
 
@@ -65,7 +66,8 @@ def first_time_setup():
     config.set("PREFERENCES", "tesseract_path", values.get("tesseract_path"))
     config.set("PREFERENCES", "dcs_path", dcs_path or default_dcs_path)
     config.set("PREFERENCES", "db_name", "profiles_new.db")
-    config.set("PREFERENCES", "capture_key", values.get("capture_key") or "ctrl+t")
+    config.set("PREFERENCES", "capture_key",
+               values.get("capture_key") or "ctrl+t")
     config.set("PREFERENCES", "log_raw_tesseract_output", "false")
 
     with open("settings.ini", "w+") as f:

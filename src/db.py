@@ -19,7 +19,8 @@ class DatabaseInterface:
         wps = dict()
         for waypoint in profile.waypoints:
             if waypoint.wp_type == "MSN":
-                wps_list = wps.get(waypoint.wp_type, dict()).get(waypoint.station, list())
+                wps_list = wps.get(waypoint.wp_type, dict()).get(
+                    waypoint.station, list())
             else:
                 wps_list = wps.get(waypoint.wp_type, list())
 
@@ -42,7 +43,8 @@ class DatabaseInterface:
                 wps_list.append(wp)
                 wps[waypoint.wp_type] = wps_list
 
-        self.logger.debug(f"Fetched {profilename} from DB, with {len(wps)} waypoints")
+        self.logger.debug(
+            f"Fetched {profilename} from DB, with {len(wps)} waypoints")
         return wps, aircraft
 
     def save_profile(self, profileinstance):
@@ -51,9 +53,11 @@ class DatabaseInterface:
 
         try:
             with db.atomic():
-                profile = ProfileModel.create(name=profileinstance.profilename, aircraft=profileinstance.aircraft)
+                profile = ProfileModel.create(
+                    name=profileinstance.profilename, aircraft=profileinstance.aircraft)
         except IntegrityError:
-            profile = ProfileModel.get(ProfileModel.name == profileinstance.profilename)
+            profile = ProfileModel.get(
+                ProfileModel.name == profileinstance.profilename)
         profile.aircraft = profileinstance.aircraft
 
         for waypoint in profile.waypoints:
@@ -62,9 +66,11 @@ class DatabaseInterface:
         for sequence in profile.sequences:
             delete_list.append(sequence)
 
-        self.logger.debug(f"Attempting to save profile {profileinstance.profilename}")
+        self.logger.debug(
+            f"Attempting to save profile {profileinstance.profilename}")
         for sequencenumber in profileinstance.sequences:
-            sequence_db_instance = SequenceModel.create(identifier=sequencenumber, profile=profile)
+            sequence_db_instance = SequenceModel.create(
+                identifier=sequencenumber, profile=profile)
             sequences_db_instances[sequencenumber] = sequence_db_instance
 
         for wp_type, wp_list in profileinstance.waypoints.items():

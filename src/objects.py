@@ -33,8 +33,10 @@ def load_base_data(basedata, basedict):
         name = base.get('name')
 
         if name not in ("Stennis", "Kuznetsov", "Kuznetsov North", "Kuznetsov South"):
-            lat = base.get("latitude") or base.get('locationDetails').get('lat')
-            lon = base.get("longitude") or base.get('locationDetails').get('lon')
+            lat = base.get("latitude") or base.get(
+                'locationDetails').get('lat')
+            lon = base.get("longitude") or base.get(
+                'locationDetails').get('lon')
             elev = base.get("elevation")
             if elev is None:
                 elev = base.get('locationDetails').get('altitude')
@@ -62,9 +64,11 @@ def generate_default_bases():
                 with open(".\\data\\" + filename, "r") as f:
                     try:
                         load_base_data(json.load(f), default_bases)
-                        logger.info(f"Default base data built succesfully from file: {filename}")
+                        logger.info(
+                            f"Default base data built succesfully from file: {filename}")
                     except AttributeError:
-                        logger.warning(f"Failed to build default base data from file: {filename}", exc_info=True)
+                        logger.warning(
+                            f"Failed to build default base data from file: {filename}", exc_info=True)
 
 
 @dataclass
@@ -89,7 +93,8 @@ class Wp:
             return
 
         if not type(self.position) == LatLon:
-            raise ValueError("Waypoint position must be a LatLon object or base name string")
+            raise ValueError(
+                "Waypoint position must be a LatLon object or base name string")
 
         if self.wp_type == "MSN" and not self.station:
             raise ValueError("No station defined for PP MSN")
@@ -107,12 +112,13 @@ class Wp:
 
 
 class Profile:
-    def __init__(self, profilename, db_interface):
+    def __init__(self, profilename, db_interface, waypoints=None, aircraft="hornet"):
         self.profilename = profilename
         self.db_interface = db_interface
 
         if profilename:
-            self.waypoints, self.aircraft = self.db_interface.get_profile(profilename)
+            self.waypoints, self.aircraft = self.db_interface.get_profile(
+                profilename)
         else:
             self.waypoints, self.aircraft = dict(), "hornet"
 
@@ -180,8 +186,12 @@ class Profile:
 
     def to_dict(self):
         return dict(
-            waypoints=[waypoint.to_dict() for waypoint in self.profile.waypoints_as_list + self.profile.msns_as_list],
+            waypoints=[waypoint.to_dict(
+            ) for waypoint in self.profile.waypoints_as_list + self.profile.msns_as_list],
             name=self.profile.profilename,
             aircraft=self.profile.aircraft
         )
 
+    @staticmethod
+    def to_object(profile_data):
+        return Profile()
