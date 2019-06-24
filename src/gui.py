@@ -434,7 +434,8 @@ class GUI:
         return captured_map_coords
 
     def export_to_string(self):
-        e = dict(waypoints=[waypoint.to_dict() for waypoint in self.profile.waypoints_as_list + self.profile.msns_as_list])
+        e = dict(waypoints=[waypoint.to_dict() for waypoint in self.profile.waypoints_as_list + self.profile.msns_as_list]
+                    aircraft=self.profile.aircraft)
 
         dump = json.dumps(e)
         encoded = base64.b64encode(dump.encode('utf-8'))
@@ -449,8 +450,12 @@ class GUI:
         self.logger.debug(e)
         try:
             self.profile.waypoints = e["waypoints"]
+            self.update_waypoints_list()
         except Exception as e:
             PyGUI.Popup('Failed to parse profile from string')
+
+    def load_new_profile(self, waypoints):
+        self.profile = self.editor.get_profile("")
 
 
     def parse_map_coords_string(self, coords_string):
@@ -659,11 +664,7 @@ class GUI:
                     PyGUI.Popup("Profile not found")
 
             elif event == "Export to file":
-                e = dict(waypoints=[waypoint.to_dict() for waypoint
-                                    in self.profile.waypoints_as_list + self.profile.msns_as_list],
-                         name=self.profile.profilename, aircraft=self.profile.aircraft)
-
-
+                e = self.profile.to_dict()
 
                 filename = PyGUI.PopupGetFile("Enter file name", "Exporting profile", default_extension=".json",
                                               save_as=True, file_types=(("JSON File", "*.json"),))

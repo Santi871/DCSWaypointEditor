@@ -178,3 +178,10 @@ class Profile:
     def get_sequence(self, identifier):
         return self.sequences_dict.get(identifier, list())
 
+    def to_dict(self):
+        return dict(
+            waypoints=[waypoint.to_dict() for waypoint in self.profile.waypoints_as_list + self.profile.msns_as_list],
+            name=self.profile.profilename,
+            aircraft=self.profile.aircraft
+        )
+
