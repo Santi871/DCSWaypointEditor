@@ -39,4 +39,5 @@ class WaypointEditor:
 
     def stop(self):
         self.db.close()
-        self.driver.stop()
+        if self.driver is not None:
+            self.driver.stop()
