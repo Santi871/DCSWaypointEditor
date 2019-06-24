@@ -6,7 +6,7 @@ import urllib.request
 from os import walk, path
 from src.logger import get_logger
 
-from models import ProfileModel, WaypointModel, SequenceModel
+from src.models import ProfileModel, WaypointModel, SequenceModel, IntegrityError
 
 
 default_bases = dict()
@@ -225,3 +225,4 @@ class Profile:
                             wp_type=waypoint.wp_type,
                             station=station
                         )
+

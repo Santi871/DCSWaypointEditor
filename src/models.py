@@ -1,4 +1,4 @@
-from peewee import Model, IntegerField, CharField, ForeignKeyField, FloatField, SqliteDatabase
+from peewee import Model, IntegerField, CharField, ForeignKeyField, FloatField, SqliteDatabase, IntegrityError
 
 db = SqliteDatabase(None, pragmas={'foreign_keys': 1})
 

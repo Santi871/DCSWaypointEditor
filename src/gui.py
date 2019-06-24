@@ -840,8 +840,4 @@ class GUI:
             pass
 
         self.window.Close()
-<<<<<<< HEAD
-        self.editor.db.close()
-=======
         self.editor.stop()
->>>>>>> upstream/master
