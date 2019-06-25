@@ -491,10 +491,10 @@ class GUI:
     def import_from_string(self):
         # Load the encoded string from the clipboard
         encoded = pyperclip.paste()
-        decoded = base64.b64decode(encoded.encode('utf-8'))
-        e = json.loads(decoded)
-        self.logger.debug(e)
         try:
+            decoded = base64.b64decode(encoded.encode('utf-8'))
+            e = json.loads(decoded)
+            self.logger.debug(e)
             self.profile = Profile.to_object(e)
             self.logger.debug(self.profile.to_dict())
             self.update_waypoints_list(set_to_first=True)
