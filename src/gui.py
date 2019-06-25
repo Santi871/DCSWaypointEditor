@@ -61,6 +61,9 @@ def first_time_setup_gui():
         [PyGUI.Text("F10 Map Capture Key:"), PyGUI.Input(
             "ctrl+t", key="capture_key")],
 
+        [PyGUI.Text("Quick Capture Toggle Key:"), PyGUI.Input(
+            "ctrl+shift+t", key="quick_capture_hotkey")],
+
         [PyGUI.Text("DCS-BIOS:"), PyGUI.Text(dcs_bios_detected, key="dcs_bios"),
          PyGUI.Button("Install", key="install_button", disabled=dcs_bios_detected == "Detected")],
     ]
@@ -111,6 +114,8 @@ class GUI:
         self.capturing = False
         self.capture_key = self.editor.settings.get(
             "PREFERENCES", "capture_key")
+        self.quick_capture_hotkey = self.editor.settings.get(
+            "PREFERENCES", "quick_capture_hotkey")
         self.software_version = software_version
         self.is_focused = True
 
@@ -129,6 +134,7 @@ class GUI:
 
         self.logger.info(f"Tesseract version is: {self.tesseract_version}")
         self.window = self.create_gui()
+        keyboard.add_hotkey(self.quick_capture_hotkey, self.toggle_quick_capture)
 
     def exit_capture(self):
         self.exit_quick_capture = True
@@ -565,6 +571,26 @@ class GUI:
         if not added:
             self.stop_quick_capture()
 
+    def toggle_quick_capture(self):
+        if self.capturing:
+            self.stop_quick_capture()
+        else:
+            self.start_quick_capture()
+
+    def start_quick_capture(self):
+        self.disable_coords_input()
+        self.window.Element('capture').Update(
+            text="Stop capturing")
+        self.window.Element('quick_capture').Update(disabled=True)
+        self.window.Element('capture_status').Update("Status: Capturing...")
+        self.window.Refresh()
+        keyboard.add_hotkey(
+            self.capture_key,
+            self.input_parsed_coords, 
+            timeout=1
+        )
+        self.capturing = True
+
     def stop_quick_capture(self):
         try:
             keyboard.remove_hotkey(self.capture_key)
@@ -783,16 +809,7 @@ class GUI:
 
             elif event == "capture":
                 if not self.capturing:
-                    self.disable_coords_input()
-                    self.window.Element('capture').Update(
-                        text="Stop capturing")
-                    self.window.Element('quick_capture').Update(disabled=True)
-                    self.window.Element('capture_status').Update(
-                        "Status: Capturing...")
-                    self.window.Refresh()
-                    keyboard.add_hotkey(
-                        self.capture_key, self.input_parsed_coords, timeout=1)
-                    self.capturing = True
+                    self.start_quick_capture()
                 else:
                     self.stop_quick_capture()
 
