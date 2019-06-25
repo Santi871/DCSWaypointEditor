@@ -58,10 +58,13 @@ def first_time_setup_gui():
         [PyGUI.Text("Tesseract.exe Path:"), PyGUI.Input(default_tesseract_path, key="tesseract_path"),
          PyGUI.Button("Browse...", button_type=PyGUI.BUTTON_TYPE_BROWSE_FILE, target="tesseract_path")],
 
-        [PyGUI.Text("F10 Map Capture Key:"), PyGUI.Input(
+        [PyGUI.Text("F10 Map Capture Hotkey:"), PyGUI.Input(
             "ctrl+t", key="capture_key")],
 
-        [PyGUI.Text("Quick Capture Toggle Key:"), PyGUI.Input(
+        [PyGUI.Text("Quick Capture Toggle Hotkey:"), PyGUI.Input(
+            "ctrl+shift+t", key="quick_capture_hotkey")],
+
+        [PyGUI.Text("Enter into Aircraft Hotkey (Optional):"), PyGUI.Input(
             "ctrl+shift+t", key="quick_capture_hotkey")],
 
         [PyGUI.Text("DCS-BIOS:"), PyGUI.Text(dcs_bios_detected, key="dcs_bios"),
