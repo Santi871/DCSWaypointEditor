@@ -480,6 +480,7 @@ class GUI:
         dump = json.dumps(e)
         encoded = base64.b64encode(dump.encode('utf-8'))
         pyperclip.copy(encoded.decode('utf-8'))
+        PyGUI.Popup('Encoded string copied to clipboard, paste away!')
 
     def import_from_string(self):
         # Load the encoded string from the clipboard
@@ -491,6 +492,7 @@ class GUI:
             self.profile = Profile.to_object(e)
             self.logger.debug(self.profile.to_dict())
             self.update_waypoints_list(set_to_first=True)
+            PyGUI.Popup('Loaded waypoint data from encoded string successfully')
         except Exception as e:
             self.logger.error(e)
             PyGUI.Popup('Failed to parse profile from string')
