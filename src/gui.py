@@ -112,6 +112,7 @@ class GUI:
         self.capture_key = self.editor.settings.get(
             "PREFERENCES", "capture_key")
         self.software_version = software_version
+        self.is_focused = True
 
         tesseract_path = self.editor.settings['PREFERENCES'].get(
             'tesseract_path', "tesseract")
@@ -128,8 +129,6 @@ class GUI:
 
         self.logger.info(f"Tesseract version is: {self.tesseract_version}")
         self.window = self.create_gui()
-        keyboard.add_hotkey('ctrl+c', self.export_to_string, timeout=1)
-        keyboard.add_hotkey('ctrl+v', self.import_from_string, timeout=1)
 
     def exit_capture(self):
         self.exit_quick_capture = True
@@ -263,6 +262,8 @@ class GUI:
              PyGUI.Button("Delete profile", size=(12, 1))],
             [PyGUI.Button("Export to file", size=(12, 1)),
              PyGUI.Button("Import from file", size=(12, 1))],
+             [PyGUI.Button("Encode to String", size=(12, 1)),
+             PyGUI.Button("Decode from String", size=(12, 1))],
             [PyGUI.Text(f"Version: {self.software_version}")]
         ]
 
@@ -297,7 +298,7 @@ class GUI:
             self.window.Element("sequence").Update(
                 values=(8, 2, 7, 3), value=8)
 
-    def update_position(self, position=None, elevation=None, name=None, update_mgrs=True, aircraft=None):
+    def update_position(self, position=None, elevation=None, name=None, update_mgrs=True, aircraft=None, waypoint_type=None):
 
         if position is not None:
             latdeg = round(position.lat.degree)
@@ -347,7 +348,11 @@ class GUI:
         else:
             self.window.Element("msnName").Update("")
 
-    def update_waypoints_list(self):
+        if waypoint_type is not None:
+            self.window.Element(waypoint_type).Update(value=True)
+
+
+    def update_waypoints_list(self, set_to_first=False):
         values = list()
         wp_types_limits = dict(
             hornet=dict(WP=None, MSN=6),
@@ -390,7 +395,10 @@ class GUI:
                             namestr = strike(namestr)
                         values.append(namestr)
 
-        self.window.Element('activesList').Update(values=values)
+        if set_to_first:
+            self.window.Element('activesList').Update(values=values, scroll_to_index=0)
+        else:
+            self.window.Element('activesList').Update(values=values)
         self.window.Element(self.profile.aircraft).Update(value=True)
 
     def disable_coords_input(self):
@@ -467,6 +475,7 @@ class GUI:
 
     def export_to_string(self):
         e = self.profile.to_dict()
+        self.logger.debug(e)
 
         dump = json.dumps(e)
         encoded = base64.b64encode(dump.encode('utf-8'))
@@ -479,9 +488,11 @@ class GUI:
         e = json.loads(decoded)
         self.logger.debug(e)
         try:
-            self.profile.waypoints = e["waypoints"]
-            self.update_waypoints_list()
+            self.profile = Profile.to_object(e)
+            self.logger.debug(self.profile.to_dict())
+            self.update_waypoints_list(set_to_first=True)
         except Exception as e:
+            self.logger.error(e)
             PyGUI.Popup('Failed to parse profile from string')
 
     def load_new_profile(self, waypoints):
@@ -638,8 +649,8 @@ class GUI:
     def run(self):
         while True:
             event, self.values = self.window.Read()
-            self.logger.debug(f"Event: {event}")
-            self.logger.debug(f"Values: {self.values}")
+            # self.logger.debug(f"Event: {event}")
+            # self.logger.debug(f"Values: {self.values}")
 
             if event is None or event == 'Exit':
                 self.logger.info("Exiting...")
@@ -649,6 +660,12 @@ class GUI:
                 position, elevation, name = self.validate_coords()
                 if position is not None:
                     self.add_waypoint(position, elevation, name)
+
+            elif event == "Encode to String":
+                self.export_to_string()
+
+            elif event == "Decode from String":
+                self.import_from_string()
 
             elif event == "Update":
                 if self.values['activesList']:
@@ -669,7 +686,7 @@ class GUI:
                 if self.values['activesList']:
                     waypoint = self.find_selected_waypoint()
                     self.update_position(
-                        waypoint.position, waypoint.elevation, waypoint.name)
+                        waypoint.position, waypoint.elevation, waypoint.name, waypoint_type=waypoint.wp_type)
 
             elif event == "Save profile":
                 if self.profile.waypoints:

@@ -114,6 +114,20 @@ class Wp:
             station=self.station
         )
 
+    @staticmethod
+    def to_object(waypoint):
+        return Wp(
+            LatLon(
+                Latitude(waypoint.get('latitude')),
+                Longitude(waypoint.get('longitude'))
+            ),
+            elevation=waypoint.get('elevation'),
+            name=waypoint.get('name'),
+            sequence=waypoint.get('sequence'),
+            wp_type=waypoint.get('wp_type'),
+            station=waypoint.get('station')
+        )
+
 
 class Profile:
     def __init__(self, profilename, waypoints={'WP': [], 'MSN': {}}, aircraft="hornet"):
@@ -185,9 +199,18 @@ class Profile:
         try:
             profile_name = profile_data["name"]
             waypoints = profile_data["waypoints"]
+            wps = [Wp.to_object(w) for w in waypoints if w['wp_type'] == 'WP']
+            msns = [Wp.to_object(w) for w in waypoints if w['wp_type'] == 'MSN']
+            missions = {}
+            for msn in msns:
+                msn_list = missions.get(msn.station, list())
+                msn_list.append(msn)
+                missions[msn.station] = msn_list
+
             aircraft = profile_data["aircraft"]
-            return Profile(profile_name, waypoints=waypoints, aircraft=aircraft)
-        except:
+            return Profile(profile_name, waypoints={'WP': wps, 'MSN': missions}, aircraft=aircraft)
+        except Exception as e:
+            logger.error(e)
             raise ValueError("Failed to load profile from data")
 
     def save(self, profile_name):
