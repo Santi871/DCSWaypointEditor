@@ -262,7 +262,7 @@ class GUI:
              PyGUI.Button("Delete profile", size=(12, 1))],
             [PyGUI.Button("Export to file", size=(12, 1)),
              PyGUI.Button("Import from file", size=(12, 1))],
-             [PyGUI.Button("Encode to String", size=(12, 1)),
+            [PyGUI.Button("Encode to String", size=(12, 1)),
              PyGUI.Button("Decode from String", size=(12, 1))],
             [PyGUI.Text(f"Version: {self.software_version}")]
         ]
@@ -298,7 +298,8 @@ class GUI:
             self.window.Element("sequence").Update(
                 values=(8, 2, 7, 3), value=8)
 
-    def update_position(self, position=None, elevation=None, name=None, update_mgrs=True, aircraft=None, waypoint_type=None):
+    def update_position(self, position=None, elevation=None, name=None, update_mgrs=True, aircraft=None,
+                        waypoint_type=None):
 
         if position is not None:
             latdeg = round(position.lat.degree)
@@ -349,8 +350,7 @@ class GUI:
             self.window.Element("msnName").Update("")
 
         if waypoint_type is not None:
-            self.window.Element(waypoint_type).Update(value=True)
-
+            self.select_wp_type(waypoint_type)
 
     def update_waypoints_list(self, set_to_first=False):
         values = list()
@@ -396,7 +396,7 @@ class GUI:
                         values.append(namestr)
 
         if set_to_first:
-            self.window.Element('activesList').Update(values=values, scroll_to_index=0)
+            self.window.Element('activesList').Update(values=values, set_to_index=0)
         else:
             self.window.Element('activesList').Update(values=values)
         self.window.Element(self.profile.aircraft).Update(value=True)
@@ -494,10 +494,10 @@ class GUI:
             self.update_waypoints_list(set_to_first=True)
             PyGUI.Popup('Loaded waypoint data from encoded string successfully')
         except Exception as e:
-            self.logger.error(e)
+            self.logger.error(e, exc_info=True)
             PyGUI.Popup('Failed to parse profile from string')
 
-    def load_new_profile(self, waypoints):
+    def load_new_profile(self):
         self.profile = Profile('')
 
     def parse_map_coords_string(self, coords_string):
@@ -623,6 +623,13 @@ class GUI:
         profiles = self.editor.get_profile_names()
         self.window.Element("profileSelector").Update(values=[""] + profiles,
                                                       set_to_index=profiles.index(name) + 1)
+
+    def select_wp_type(self, wp_type):
+        if wp_type == "WP":
+            self.set_sequence_station_selector("sequence")
+        elif wp_type == "MSN":
+            self.set_sequence_station_selector("station")
+        self.window.Element(wp_type).Update(value=True)
 
     def find_selected_waypoint(self):
         # TODO update regex
@@ -821,11 +828,8 @@ class GUI:
                 self.editor.enter_all(self.profile)
                 self.window.Element('enter').Update(disabled=False)
 
-            elif event == "WP":
-                self.set_sequence_station_selector("sequence")
-
-            elif event in "MSN":
-                self.set_sequence_station_selector("station")
+            elif event in ("MSN", "WP"):
+                self.select_wp_type(event)
 
             elif event == "elevFeet":
                 self.update_altitude_elements("meters")
