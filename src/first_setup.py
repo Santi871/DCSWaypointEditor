@@ -62,6 +62,8 @@ def first_time_setup():
     config = ConfigParser()
     config.add_section("PREFERENCES")
     config.set("PREFERENCES", "grace_period", "5")
+    config.set("PREFERENCES", "button_release_short_delay", "0.2")
+    config.set("PREFERENCES", "button_release_medium_delay", "0.5")
     config.set("PREFERENCES", "tesseract_path", values.get("tesseract_path"))
     config.set("PREFERENCES", "dcs_path", dcs_path or default_dcs_path)
     config.set("PREFERENCES", "db_name", "profiles_new.db")

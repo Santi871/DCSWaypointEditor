@@ -1,5 +1,6 @@
 import socket
 from time import sleep
+from configparser import NoOptionError
 
 
 class DriverException(Exception):
@@ -51,14 +52,27 @@ def latlon_tostring(latlong, decimal_minutes_mode=False, easting_zfill=2):
 
 
 class Driver:
-    def __init__(self, logger, host="127.0.0.1", port=7778):
+    def __init__(self, logger, config, host="127.0.0.1", port=7778):
         self.logger = logger
         self.s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.host, self.port = host, port
+        self.config = config
 
-    def press_with_delay(self, key, delay_after=0.2, delay_release=0.2):
+        try:
+            self.short_delay = float(self.config.get("PREFERENCES", "button_release_short_delay"))
+            self.medium_delay = float(self.config.get("PREFERENCES", "button_release_medium_delay"))
+        except NoOptionError:
+            self.short_delay, self.medium_delay = 0.2, 0.5
+
+    def press_with_delay(self, key, delay_after=None, delay_release=None):
         if not key:
             return
+
+        if delay_after is None:
+            delay_after = self.short_delay
+
+        if delay_release is None:
+            delay_release = self.short_delay
 
         # TODO get rid of the OSB -> OS replacement
         self.s.sendto(f"{key} 1\n".replace("OSB", "OS").encode(
@@ -74,17 +88,17 @@ class Driver:
 
 
 class HornetDriver(Driver):
-    def ufc(self, num, delay_after=0.2, delay_release=0.2):
+    def ufc(self, num, delay_after=None, delay_release=None):
         key = f"UFC_{num}"
         self.press_with_delay(key, delay_after=delay_after,
                               delay_release=delay_release)
 
-    def lmdi(self, pb, delay_after=0.2, delay_release=0.2):
+    def lmdi(self, pb, delay_after=None, delay_release=None):
         key = f"LEFT_DDI_PB_{pb.zfill(2)}"
         self.press_with_delay(key, delay_after=delay_after,
                               delay_release=delay_release)
 
-    def ampcd(self, pb, delay_after=0.2, delay_release=0.2):
+    def ampcd(self, pb, delay_after=None, delay_release=None):
         key = f"AMPCD_PB_{pb.zfill(2)}"
         self.press_with_delay(key, delay_after=delay_after,
                               delay_release=delay_release)
@@ -96,7 +110,7 @@ class HornetDriver(Driver):
 
             self.ufc(num)
 
-        self.ufc("ENT", delay_release=0.5)
+        self.ufc("ENT", delay_release=self.medium_delay)
 
         i = str(number).find(".")
 
@@ -105,7 +119,7 @@ class HornetDriver(Driver):
                 for num in str(number)[str(number).find(".") + 1:]:
                     self.ufc(num)
 
-            self.ufc("ENT", delay_release=0.5)
+            self.ufc("ENT", delay_release=self.medium_delay)
 
     def enter_coords(self, latlong, elev, pp, decimal_minutes_mode=False):
         lat_str, lon_str = latlon_tostring(latlong, decimal_minutes_mode=decimal_minutes_mode)
@@ -113,16 +127,16 @@ class HornetDriver(Driver):
 
         if not pp:
             if latlong.lat.degree > 0:
-                self.ufc("2", delay_release=0.5)
+                self.ufc("2", delay_release=self.medium_delay)
             else:
-                self.ufc("8", delay_release=0.5)
+                self.ufc("8", delay_release=self.medium_delay)
             self.enter_number(lat_str, two_enters=True)
             sleep(0.5)
 
             if latlong.lon.degree > 0:
-                self.ufc("6", delay_release=0.5)
+                self.ufc("6", delay_release=self.medium_delay)
             else:
-                self.ufc("4", delay_release=0.5)
+                self.ufc("4", delay_release=self.medium_delay)
             self.enter_number(lon_str, two_enters=True)
 
             if elev:
@@ -132,17 +146,17 @@ class HornetDriver(Driver):
         else:
             self.ufc("OSB1")
             if latlong.lat.degree > 0:
-                self.ufc("2", delay_release=0.5)
+                self.ufc("2", delay_release=self.medium_delay)
             else:
-                self.ufc("8", delay_release=0.5)
+                self.ufc("8", delay_release=self.medium_delay)
             self.enter_number(lat_str, two_enters=True)
 
             self.ufc("OSB3")
 
             if latlong.lon.degree > 0:
-                self.ufc("6", delay_release=0.5)
+                self.ufc("6", delay_release=self.medium_delay)
             else:
-                self.ufc("4", delay_release=0.5)
+                self.ufc("4", delay_release=self.medium_delay)
 
             self.enter_number(lon_str, two_enters=True)
 
@@ -246,7 +260,7 @@ class HornetDriver(Driver):
 
 
 class HarrierDriver(Driver):
-    def ufc(self, num, delay_after=0.2, delay_release=0.2):
+    def ufc(self, num, delay_after=None, delay_release=None):
         if num not in ("ENT", "CLR"):
             key = f"UFC_B{num}"
         elif num == "ENT":
@@ -258,12 +272,12 @@ class HarrierDriver(Driver):
         self.press_with_delay(key, delay_after=delay_after,
                               delay_release=delay_release)
 
-    def odu(self, num, delay_after=0.2, delay_release=0.2):
+    def odu(self, num, delay_after=None, delay_release=None):
         key = f"ODU_OPT{num}"
         self.press_with_delay(key, delay_after=delay_after,
                               delay_release=delay_release)
 
-    def lmpcd(self, pb, delay_after=0.2, delay_release=0.2):
+    def lmpcd(self, pb, delay_after=None, delay_release=None):
         key = f"MPCD_L_{pb}"
         self.press_with_delay(key, delay_after=delay_after, delay_release=delay_release)
 
@@ -274,7 +288,7 @@ class HarrierDriver(Driver):
 
             self.ufc(num)
 
-        self.ufc("ENT", delay_release=0.5)
+        self.ufc("ENT", delay_release=self.medium_delay)
 
         i = str(number).find(".")
 
@@ -283,24 +297,24 @@ class HarrierDriver(Driver):
                 for num in str(number)[str(number).find(".") + 1:]:
                     self.ufc(num)
 
-            self.ufc("ENT", delay_release=0.5)
+            self.ufc("ENT", delay_release=self.medium_delay)
 
     def enter_coords(self, latlong, elev):
         lat_str, lon_str = latlon_tostring(latlong, decimal_minutes_mode=False, easting_zfill=3)
         self.logger.debug(f"Entering coords string: {lat_str}, {lon_str}")
 
         if latlong.lat.degree > 0:
-            self.ufc("2", delay_release=0.5)
+            self.ufc("2", delay_release=self.medium_delay)
         else:
-            self.ufc("8", delay_release=0.5)
+            self.ufc("8", delay_release=self.medium_delay)
         self.enter_number(lat_str)
 
         self.odu("2")
 
         if latlong.lon.degree > 0:
-            self.ufc("6", delay_release=0.5)
+            self.ufc("6", delay_release=self.medium_delay)
         else:
-            self.ufc("4", delay_release=0.5)
+            self.ufc("4", delay_release=self.medium_delay)
 
         self.enter_number(lon_str)
 
@@ -328,7 +342,7 @@ class HarrierDriver(Driver):
 
 
 class MirageDriver(Driver):
-    def pcn(self, num, delay_after=0.2, delay_release=0.2):
+    def pcn(self, num, delay_after=None, delay_release=None):
         if num in ("ENTER", "CLR"):
             key = f"INS_{num}_BTN"
         elif num == "PREP":
@@ -352,17 +366,17 @@ class MirageDriver(Driver):
 
         self.pcn("1")
         if latlong.lat.degree > 0:
-            self.pcn("2", delay_release=0.5)
+            self.pcn("2", delay_release=self.medium_delay)
         else:
-            self.pcn("8", delay_release=0.5)
+            self.pcn("8", delay_release=self.medium_delay)
         self.enter_number(lat_str[:-2])
 
         self.pcn("3")
 
         if latlong.lon.degree > 0:
-            self.pcn("6", delay_release=0.5)
+            self.pcn("6", delay_release=self.medium_delay)
         else:
-            self.pcn("4", delay_release=0.5)
+            self.pcn("4", delay_release=self.medium_delay)
         self.enter_number(lon_str[:-2])
 
     def enter_waypoints(self, wps):

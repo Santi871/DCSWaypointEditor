@@ -12,9 +12,9 @@ class WaypointEditor:
         self.settings = settings
         self.db = DatabaseInterface(settings['PREFERENCES'].get("DB_Name", "profiles.db"))
         self.default_bases = default_bases
-        self.drivers = dict(hornet=HornetDriver(self.logger),
-                            harrier=HarrierDriver(self.logger),
-                            mirage=MirageDriver(self.logger))
+        self.drivers = dict(hornet=HornetDriver(self.logger, settings),
+                            harrier=HarrierDriver(self.logger, settings),
+                            mirage=MirageDriver(self.logger, settings))
         self.driver = None
 
     def set_driver(self, driver_name):
