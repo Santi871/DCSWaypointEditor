@@ -1,5 +1,8 @@
-profiles_new.db
 __pycache__
 log.txt
 settings.ini
 .vscode
+*.db
+*.spec
+/*.json
+sanitize_json_data.py
