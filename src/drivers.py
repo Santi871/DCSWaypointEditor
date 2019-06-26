@@ -61,10 +61,12 @@ class Driver:
             return
 
         # TODO get rid of the OSB -> OS replacement
-        self.s.sendto(f"{key} 1\n".replace("OSB", "OS").encode("utf-8"), (self.host, self.port))
+        self.s.sendto(f"{key} 1\n".replace("OSB", "OS").encode(
+            "utf-8"), (self.host, self.port))
         sleep(delay_release)
 
-        self.s.sendto(f"{key} 0\n".replace("OSB", "OS").encode("utf-8"), (self.host, self.port))
+        self.s.sendto(f"{key} 0\n".replace("OSB", "OS").encode(
+            "utf-8"), (self.host, self.port))
         sleep(delay_after)
 
     def stop(self):
@@ -74,15 +76,18 @@ class Driver:
 class HornetDriver(Driver):
     def ufc(self, num, delay_after=0.2, delay_release=0.2):
         key = f"UFC_{num}"
-        self.press_with_delay(key, delay_after=delay_after, delay_release=delay_release)
+        self.press_with_delay(key, delay_after=delay_after,
+                              delay_release=delay_release)
 
     def lmdi(self, pb, delay_after=0.2, delay_release=0.2):
         key = f"LEFT_DDI_PB_{pb.zfill(2)}"
-        self.press_with_delay(key, delay_after=delay_after, delay_release=delay_release)
+        self.press_with_delay(key, delay_after=delay_after,
+                              delay_release=delay_release)
 
     def ampcd(self, pb, delay_after=0.2, delay_release=0.2):
         key = f"AMPCD_PB_{pb.zfill(2)}"
-        self.press_with_delay(key, delay_after=delay_after, delay_release=delay_release)
+        self.press_with_delay(key, delay_after=delay_after,
+                              delay_release=delay_release)
 
     def enter_number(self, number, two_enters=False):
         for num in str(number):
@@ -250,11 +255,13 @@ class HarrierDriver(Driver):
             key = "UFC_CLEAR"
         else:
             key = f"UFC_{num}"
-        self.press_with_delay(key, delay_after=delay_after, delay_release=delay_release)
+        self.press_with_delay(key, delay_after=delay_after,
+                              delay_release=delay_release)
 
     def odu(self, num, delay_after=0.2, delay_release=0.2):
         key = f"ODU_OPT{num}"
-        self.press_with_delay(key, delay_after=delay_after, delay_release=delay_release)
+        self.press_with_delay(key, delay_after=delay_after,
+                              delay_release=delay_release)
 
     def lmpcd(self, pb, delay_after=0.2, delay_release=0.2):
         key = f"MPCD_L_{pb}"
