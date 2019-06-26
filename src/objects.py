@@ -218,8 +218,10 @@ class Profile:
             logger.error(e)
             raise ValueError("Failed to load profile from data")
 
-    def save(self):
+    def save(self, profilename):
         delete_list = list()
+        if profilename is not None:
+            self.profilename = profilename
 
         try:
             with db.atomic():
