@@ -3,7 +3,6 @@ from shutil import copytree
 from src.gui import first_time_setup_gui, detect_dcs_bios
 from src.logger import get_logger
 from pathlib import Path
-import os
 
 
 def install_dcs_bios(dcs_path):
