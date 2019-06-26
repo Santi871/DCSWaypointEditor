@@ -130,10 +130,14 @@ class Wp:
 
 
 class Profile:
-    def __init__(self, profilename, waypoints={'WP': [], 'MSN': {}}, aircraft="hornet"):
+    def __init__(self, profilename, waypoints=None, aircraft="hornet"):
         self.profilename = profilename
-        self.waypoints = waypoints
         self.aircraft = aircraft
+
+        if waypoints is None:
+            self.waypoints = {'WP': [], 'MSN': {}}
+        else:
+            self.waypoints = waypoints
 
     def update_sequences(self):
         sequences = set()
@@ -144,8 +148,9 @@ class Profile:
         sequences.sort()
         return sequences
 
+    @property
     def has_waypoints(self):
-        return len(self.waypoints.get('WP') > 0) or len(self.waypoints.get('MSN') > 0)
+        return len(self.waypoints.get('WP', list())) > 0 or len(self.waypoints.get('MSN', list())) > 0
 
     @property
     def sequences(self):
@@ -213,7 +218,7 @@ class Profile:
             logger.error(e)
             raise ValueError("Failed to load profile from data")
 
-    def save(self, profile_name):
+    def save(self):
         delete_list = list()
 
         try:
