@@ -65,7 +65,7 @@ def first_time_setup_gui():
             "ctrl+shift+t", key="quick_capture_hotkey")],
 
         [PyGUI.Text("Enter into Aircraft Hotkey (Optional):"), PyGUI.Input(
-            "ctrl+shift+t", key="quick_capture_hotkey")],
+            "", key="enter_aircraft_hotkey")],
 
         [PyGUI.Text("DCS-BIOS:"), PyGUI.Text(dcs_bios_detected, key="dcs_bios"),
          PyGUI.Button("Install", key="install_button", disabled=dcs_bios_detected == "Detected")],
@@ -119,8 +119,9 @@ class GUI:
             "PREFERENCES", "capture_key")
         self.quick_capture_hotkey = self.editor.settings.get(
             "PREFERENCES", "quick_capture_hotkey")
+        self.enter_aircraft_hotkey = self.editor.settings.get(
+            "PREFERENCES", "enter_aircraft_hotkey")
         self.software_version = software_version
-        self.is_focused = True
 
         tesseract_path = self.editor.settings['PREFERENCES'].get(
             'tesseract_path', "tesseract")
@@ -138,6 +139,8 @@ class GUI:
         self.logger.info(f"Tesseract version is: {self.tesseract_version}")
         self.window = self.create_gui()
         keyboard.add_hotkey(self.quick_capture_hotkey, self.toggle_quick_capture)
+        if self.enter_aircraft_hotkey != '':
+            keyboard.add_hotkey(self.enter_aircraft_hotkey, self.enter_coords_to_aircraft)
 
     def exit_capture(self):
         self.exit_quick_capture = True
@@ -677,6 +680,11 @@ class GUI:
             self.profile.waypoints.get("MSN", list())[
                 int(station)].pop(int(i) - 1)
 
+    def enter_coords_to_aircraft(self):
+        self.window.Element('enter').Update(disabled=True)
+        self.editor.enter_all(self.profile)
+        self.window.Element('enter').Update(disabled=False)
+
     def run(self):
         while True:
             event, self.values = self.window.Read()
@@ -837,9 +845,7 @@ class GUI:
                         base.position, base.elevation, base.name)
 
             elif event == "enter":
-                self.window.Element('enter').Update(disabled=True)
-                self.editor.enter_all(self.profile)
-                self.window.Element('enter').Update(disabled=False)
+                self.enter_coords_to_aircraft()
 
             elif event == "WP":
                 self.set_sequence_station_selector("sequence")
