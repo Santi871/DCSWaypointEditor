@@ -14,7 +14,7 @@ import webbrowser
 import re
 import base64
 import pyperclip
-
+from slpp import slpp as lua
 import src.pymgrs as mgrs
 import PySimpleGUI as PyGUI
 
@@ -113,6 +113,14 @@ class GUI:
             "PREFERENCES", "capture_key")
         self.software_version = software_version
         self.is_focused = True
+        self.scaled_dcs_gui = False
+
+        try:
+            with open(f"{self.editor.settings.get('PREFERENCES', 'dcs_path')}\\Config\\options.lua", "r") as f:
+                dcs_settings = lua.decode(f.read().replace("options = ", ""))
+                self.scaled_dcs_gui = dcs_settings["graphics"]["scaleGui"]
+        except (FileNotFoundError, ValueError, TypeError):
+            self.logger.error("Failed to decode DCS settings", exc_info=True)
 
         tesseract_path = self.editor.settings['PREFERENCES'].get(
             'tesseract_path', "tesseract")
@@ -465,7 +473,9 @@ class GUI:
 
     def capture_map_coords(self):
         self.logger.debug("Attempting to capture map coords")
-        image = ImageGrab.grab((101, 5, 101 + 269, 5 + 27))
+        gui_mult = 2 if self.scaled_dcs_gui else 1
+        image = ImageGrab.grab((101*gui_mult, 5*gui_mult, (101 + 269)*gui_mult, (5 + 27)*gui_mult))
+
         enhancer = ImageEnhance.Contrast(image)
         captured_map_coords = pytesseract.image_to_string(
             ImageOps.invert(enhancer.enhance(3)))
