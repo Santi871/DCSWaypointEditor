@@ -15,7 +15,7 @@ class WaypointEditor:
         self.drivers = dict(hornet=HornetDriver(self.logger, settings),
                             harrier=HarrierDriver(self.logger, settings),
                             mirage=MirageDriver(self.logger, settings))
-        self.driver = None
+        self.driver = self.drivers["hornet"]
 
     def set_driver(self, driver_name):
         try:

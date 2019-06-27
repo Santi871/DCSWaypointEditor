@@ -365,20 +365,11 @@ class GUI:
 
     def update_waypoints_list(self, set_to_first=False):
         values = list()
-        wp_types_limits = dict(
-            hornet=dict(WP=None, MSN=6),
-            tomcat=dict(WP=3, FP=1, ST=1, IP=1, DP=1, HA=1),
-            harrier=dict(WP=None),
-            mirage=dict(WP=9)
-        )
-        # TODO apply these limits when entering into aircraft
 
         for wp in self.profile.waypoints:
             namestr = str(wp)
 
-            if wp.wp_type not in wp_types_limits[self.profile.aircraft] or \
-                    (wp_types_limits[self.profile.aircraft][wp.wp_type] is not None
-                     and wp.number > wp_types_limits[self.profile.aircraft][wp.wp_type]):
+            if not self.editor.driver.validate_waypoint(wp):
                 namestr = strike(namestr)
 
             values.append(namestr)

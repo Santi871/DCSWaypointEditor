@@ -1,7 +1,6 @@
 import socket
 from time import sleep
 from configparser import NoOptionError
-from src.objects import MSN, Waypoint
 
 
 class DriverException(Exception):
@@ -58,6 +57,7 @@ class Driver:
         self.s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.host, self.port = host, port
         self.config = config
+        self.limits = dict()
 
         try:
             self.short_delay = float(self.config.get("PREFERENCES", "button_release_short_delay"))
@@ -84,11 +84,27 @@ class Driver:
             "utf-8"), (self.host, self.port))
         sleep(delay_after)
 
+    def validate_waypoint(self, waypoint):
+        try:
+            return self.limits[waypoint.wp_type] is None or waypoint.number <= self.limits[waypoint.wp_type]
+        except KeyError:
+            return False
+
+    def validate_waypoints(self, waypoints):
+        for waypoint in waypoints:
+            if not self.validate_waypoint(waypoint):
+                waypoints.remove(waypoint)
+        return waypoints
+
     def stop(self):
         self.s.close()
 
 
 class HornetDriver(Driver):
+    def __init__(self, logger, config):
+        super().__init__(logger, config)
+        self.limits = dict(WP=None, MSN=6)
+
     def ufc(self, num, delay_after=None, delay_release=None):
         key = f"UFC_{num}"
         self.press_with_delay(key, delay_after=delay_after,
@@ -260,12 +276,16 @@ class HornetDriver(Driver):
         self.lmdi("6")
 
     def enter_all(self, profile):
-        self.enter_missions(profile.msns_as_list)
+        self.enter_missions(self.validate_waypoints(profile.msns_as_list))
         sleep(1)
-        self.enter_waypoints(profile.waypoints_as_list, profile.sequences_dict)
+        self.enter_waypoints(self.validate_waypoints(profile.waypoints_as_list), profile.sequences_dict)
 
 
 class HarrierDriver(Driver):
+    def __init__(self, logger, config):
+        super().__init__(logger, config)
+        self.limits = dict(WP=None)
+
     def ufc(self, num, delay_after=None, delay_release=None):
         if num not in ("ENT", "CLR"):
             key = f"UFC_B{num}"
@@ -344,10 +364,14 @@ class HarrierDriver(Driver):
         self.lmpcd("2")
 
     def enter_all(self, profile):
-        self.enter_waypoints(profile.waypoints_as_list)
+        self.enter_waypoints(self.validate_waypoints(profile.waypoints_as_list))
 
 
 class MirageDriver(Driver):
+    def __init__(self, logger, config):
+        super().__init__(logger, config)
+        self.limits = dict(WP=9)
+
     def pcn(self, num, delay_after=None, delay_release=None):
         if num in ("ENTER", "CLR"):
             key = f"INS_{num}_BTN"
@@ -394,4 +418,4 @@ class MirageDriver(Driver):
             self.pcn("ENTER")
 
     def enter_all(self, profile):
-        self.enter_waypoints(profile.waypoints_as_list)
+        self.enter_waypoints(self.validate_waypoints(profile.waypoints_as_list))
