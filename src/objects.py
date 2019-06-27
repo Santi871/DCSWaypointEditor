@@ -129,6 +129,59 @@ class Wp:
         )
 
 
+@dataclass
+class Waypoint:
+    position: Any
+    number: int
+    elevation: int = 0
+    name: str = ""
+    sequence: int = 0
+    wp_type: str = "WP"
+
+    def __post_init__(self):
+        if type(self.position) == str:
+            base = default_bases.get(self.position)
+
+            if base is not None:
+                self.elevation = base.elev
+                self.name = self.position
+                self.position = base.position
+            else:
+                raise ValueError("Base name not found in default bases list")
+
+        elif not type(self.position) == LatLon:
+            raise ValueError(
+                "Waypoint position must be a LatLon object or base name string")
+
+        self.latitude = self.position.latitude.decimal_degree
+        self.longitude = self.position.longitude.decimal_degree
+
+    def __str__(self):
+        strrep = f"WP{self.number}"
+        if self.sequence:
+            strrep += f" | SEQ{self.sequence}"
+        if self.name:
+            strrep += f" | {self.name}"
+        return strrep
+
+
+@dataclass
+class MSN(Waypoint):
+    station: int = 0
+
+    def __post_init__(self):
+        super().__post_init__()
+        self.wp_type = "MSN"
+        if not self.station:
+            raise ValueError("MSN station not defined")
+
+    def __str__(self):
+        strrep = f"MSN{self.number} | STA{self.station}"
+        if self.name:
+            strrep += f" | {self.name}"
+        return strrep
+
+
 class Profile:
     def __init__(self, profilename, waypoints=None, aircraft="hornet"):
         self.profilename = profilename
