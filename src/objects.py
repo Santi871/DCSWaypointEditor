@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from typing import Any
 from LatLon23 import LatLon, Longitude, Latitude
 import json
@@ -132,11 +132,13 @@ class Wp:
 @dataclass
 class Waypoint:
     position: Any
-    number: int
+    number: int = 0
     elevation: int = 0
     name: str = ""
     sequence: int = 0
     wp_type: str = "WP"
+    latitude: float = None
+    longitude: float = None
 
     def __post_init__(self):
         if type(self.position) == str:
@@ -153,8 +155,8 @@ class Waypoint:
             raise ValueError(
                 "Waypoint position must be a LatLon object or base name string")
 
-        self.latitude = self.position.latitude.decimal_degree
-        self.longitude = self.position.longitude.decimal_degree
+        self.latitude = self.position.lat.decimal_degree
+        self.longitude = self.position.lon.decimal_degree
 
     def __str__(self):
         strrep = f"WP{self.number}"
@@ -163,6 +165,10 @@ class Waypoint:
         if self.name:
             strrep += f" | {self.name}"
         return strrep
+
+    @property
+    def as_dict(self):
+        return asdict(self)
 
 
 @dataclass
