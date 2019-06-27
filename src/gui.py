@@ -113,6 +113,7 @@ class GUI:
         self.software_version = software_version
         self.is_focused = True
         self.scaled_dcs_gui = False
+        self.selected_wp_type = "WP"
 
         try:
             with open(f"{self.editor.settings.get('PREFERENCES', 'dcs_path')}\\Config\\options.lua", "r") as f:
@@ -202,11 +203,12 @@ class GUI:
             [PyGUI.Radio("WP", group_id="wp_type", default=True, enable_events=True, key="WP"),
              PyGUI.Radio("MSN", group_id="wp_type",
                          enable_events=True, key="MSN"),
-             PyGUI.Radio("FP", group_id="wp_type", disabled=True),
-             PyGUI.Radio("ST", group_id="wp_type", disabled=True)],
-            [PyGUI.Radio("IP", group_id="wp_type", disabled=True),
-             PyGUI.Radio("DP", group_id="wp_type", disabled=True),
-             PyGUI.Radio("HA", group_id="wp_type", disabled=True)],
+             PyGUI.Radio("FP", group_id="wp_type", key="FP", enable_events=True),
+             PyGUI.Radio("ST", group_id="wp_type", key="ST", enable_events=True)],
+            [PyGUI.Radio("IP", group_id="wp_type", key="IP", enable_events=True),
+             PyGUI.Radio("DP", group_id="wp_type", key="DP", enable_events=True),
+             PyGUI.Radio("HA", group_id="wp_type", key="HA", enable_events=True),
+             PyGUI.Radio("HB", group_id="wp_type", key="HB", enable_events=True)],
             [PyGUI.Button("Quick Capture", disabled=self.capture_button_disabled, key="quick_capture", pad=(5, (3, 8))),
              PyGUI.Text("Sequence:", pad=((0, 1), 3),
                         key="sequence_text", auto_size_text=False, size=(8, 1)),
@@ -224,7 +226,7 @@ class GUI:
                 PyGUI.Radio("M-2000C", group_id="ac_type",
                             disabled=False, key="mirage", enable_events=True),
                 PyGUI.Radio("F-14A/B", group_id="ac_type",
-                            disabled=True, key="tomcat", enable_events=True),
+                            disabled=False, key="tomcat", enable_events=True),
                 PyGUI.Radio("A-10C", group_id="ac_type",
                             disabled=True, key="warthog", enable_events=True),
             ]
@@ -300,14 +302,18 @@ class GUI:
         return PyGUI.Window('DCS Waypoint Editor', layout)
 
     def set_sequence_station_selector(self, mode):
+        if mode is None:
+            self.window.Element("sequence_text").Update(value="Sequence:")
+            self.window.Element("sequence").Update(
+                values=("None", 1, 2, 3), value="None", disabled=True)
         if mode == "sequence":
             self.window.Element("sequence_text").Update(value="Sequence:")
             self.window.Element("sequence").Update(
-                values=("None", 1, 2, 3), value="None")
+                values=("None", 1, 2, 3), value="None", disabled=False)
         elif mode == "station":
             self.window.Element("sequence_text").Update(value="    Station:")
             self.window.Element("sequence").Update(
-                values=(8, 2, 7, 3), value=8)
+                values=(8, 2, 7, 3), value=8, disabled=False)
 
     def update_position(self, position=None, elevation=None, name=None, update_mgrs=True, aircraft=None,
                         waypoint_type=None):
@@ -366,7 +372,7 @@ class GUI:
     def update_waypoints_list(self, set_to_first=False):
         values = list()
 
-        for wp in self.profile.waypoints:
+        for wp in sorted(self.profile.waypoints, key=lambda waypoint: waypoint.wp_type):
             namestr = str(wp)
 
             if not self.editor.driver.validate_waypoint(wp):
@@ -398,18 +404,17 @@ class GUI:
                    set_to_index=0)
 
     def add_waypoint(self, position, elevation, name=None):
-        wpadded = False
         if name is None:
             name = str()
 
         try:
-            if self.values["MSN"]:
+            if self.selected_wp_type == "MSN":
                 station = int(self.values.get("sequence", 0))
                 number = len(self.profile.stations_dict.get(station, list()))+1
                 wp = MSN(position=position, elevation=int(elevation) or 0, name=name,
                          station=station, number=number)
 
-            elif self.values["WP"]:
+            else:
                 sequence = self.values["sequence"]
                 if sequence == "None":
                     sequence = 0
@@ -420,29 +425,28 @@ class GUI:
                     return False
 
                 wp = Waypoint(position, elevation=int(elevation or 0),
-                              name=name, sequence=sequence, wp_type="WP", number=len(self.profile.waypoints_as_list)+1)
+                              name=name, sequence=sequence, wp_type=self.selected_wp_type,
+                              number=len(self.profile.waypoints_of_type(self.selected_wp_type))+1)
 
                 if sequence not in self.profile.sequences:
                     self.profile.sequences.append(sequence)
-
-            else:
-                return False
 
             self.profile.waypoints.append(wp)
             self.update_waypoints_list()
         except ValueError:
             PyGUI.Popup("Error: missing data or invalid data format")
 
-        return wpadded
+        return True
 
-    def capture_map_coords(self):
+    def capture_map_coords(self, x_start=101, x_width=269, y_start=5, y_height=27):
         self.logger.debug("Attempting to capture map coords")
         gui_mult = 2 if self.scaled_dcs_gui else 1
-        image = ImageGrab.grab((101*gui_mult, 5*gui_mult, (101 + 269)*gui_mult, (5 + 27)*gui_mult))
+        image = ImageGrab.grab((x_start*gui_mult, y_start*gui_mult,
+                                (x_start + x_width)*gui_mult, (y_start + y_height)*gui_mult))
 
         enhancer = ImageEnhance.Contrast(image)
         captured_map_coords = pytesseract.image_to_string(
-            ImageOps.invert(enhancer.enhance(3)))
+            ImageOps.invert(enhancer.enhance(6)))
         if self.editor.settings.getboolean("PREFERENCES", "log_raw_tesseract_output"):
             self.logger.info("Raw captured text: " + captured_map_coords)
         return captured_map_coords
@@ -474,10 +478,18 @@ class GUI:
     def load_new_profile(self):
         self.profile = Profile('')
 
-    def parse_map_coords_string(self, coords_string):
+    def parse_map_coords_string(self, coords_string, tomcat_mode=False):
         split_string = coords_string.split(',')
 
-        if "-" in split_string[0]:
+        if tomcat_mode:
+            latlon_string = coords_string.replace("\\", "").replace("F", "")
+            split_string = latlon_string.split(' ')
+            lat_string = split_string[1]
+            lon_string = split_string[3]
+            position = string2latlon(
+                lat_string, lon_string, format_str="d%°%m%'%S")
+
+        elif "-" in split_string[0]:
             # dd mm ss.ss
             split_latlon = split_string[0].split(' ')
             lat_string = split_latlon[0].replace('N', '').replace('S', "-")
@@ -494,13 +506,16 @@ class GUI:
         else:
             raise ValueError(f"Invalid coordinate format: {split_string[0]}")
 
-        elevation = split_string[1].replace(' ', '')
-        if "ft" in elevation:
-            elevation = int(elevation.replace("ft", ""))
-        elif "m" in elevation:
-            elevation = round(int(elevation.replace("m", ""))*3.281)
+        if not tomcat_mode:
+            elevation = split_string[1].replace(' ', '')
+            if "ft" in elevation:
+                elevation = int(elevation.replace("ft", ""))
+            elif "m" in elevation:
+                elevation = round(int(elevation.replace("m", ""))*3.281)
+            else:
+                raise ValueError("Unable to parse elevation: " + elevation)
         else:
-            raise ValueError("Unable to parse elevation: " + elevation)
+            elevation = self.capture_map_coords(2074, 97, 966, 32)
 
         self.captured_map_coords = str()
         self.logger.info("Parsed captured text: " + str(position))
@@ -538,6 +553,14 @@ class GUI:
         added = self.add_waypoint(position, elevation)
         if not added:
             self.stop_quick_capture()
+
+    def input_tomcat_alignment(self):
+        try:
+            captured_coords = self.capture_map_coords(2075, 343, 913, 40)
+            position, elevation = self.parse_map_coords_string(captured_coords, tomcat_mode=True)
+        except (IndexError, ValueError, TypeError):
+            self.logger.error("Failed to parse captured text", exc_info=True)
+            return
 
     def stop_quick_capture(self):
         try:
@@ -599,10 +622,15 @@ class GUI:
                                                       set_to_index=profiles.index(name) + 1)
 
     def select_wp_type(self, wp_type):
+        self.selected_wp_type = wp_type
+
         if wp_type == "WP":
             self.set_sequence_station_selector("sequence")
         elif wp_type == "MSN":
             self.set_sequence_station_selector("station")
+        else:
+            self.set_sequence_station_selector(None)
+
         self.window.Element(wp_type).Update(value=True)
 
     def find_selected_waypoint(self):
@@ -691,6 +719,7 @@ class GUI:
                         self.profile = Profile.load(profile_name)
                     else:
                         self.profile = Profile('')
+                    self.editor.set_driver(self.profile.aircraft)
                     self.update_waypoints_list()
 
                 except DoesNotExist:
@@ -764,7 +793,7 @@ class GUI:
                 self.editor.enter_all(self.profile)
                 self.window.Element('enter').Update(disabled=False)
 
-            elif event in ("MSN", "WP"):
+            elif event in ("MSN", "WP", "HA", "FP", "ST", "DP", "IP", "HB"):
                 self.select_wp_type(event)
 
             elif event == "elevFeet":
@@ -794,6 +823,7 @@ class GUI:
 
             elif event in ("hornet", "tomcat", "harrier", "warthog", "mirage"):
                 self.profile.aircraft = event
+                self.editor.set_driver(event)
                 self.update_waypoints_list()
 
             elif event == "filter":

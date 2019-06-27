@@ -105,8 +105,8 @@ class Waypoint:
         self.longitude = self.position.lon.decimal_degree
 
     def __str__(self):
-        strrep = f"WP{self.number}"
-        if self.sequence:
+        strrep = f"{self.wp_type}{self.number}"
+        if self.wp_type == "WP" and self.sequence:
             strrep += f" | SEQ{self.sequence}"
         if self.name:
             strrep += f" | {self.name}"
@@ -213,6 +213,15 @@ class Profile:
         return stations
 
     @property
+    def waypoints_dict(self):
+        wps_dict = dict()
+        for wp in self.waypoints_as_list:
+            wps_list = wps_dict.get(wp.wp_type, list())
+            wps_list.append(wp)
+            wps_dict[wp.wp_type] = wps_list
+        return wps_dict
+
+    @property
     def sequences_dict(self):
         d = dict()
         for sequence_identifier in self.sequences:
@@ -223,6 +232,9 @@ class Profile:
                     d[sequence_identifier] = wp_list
 
         return d
+
+    def waypoints_of_type(self, wp_type):
+        return [wp for wp in self.waypoints if wp.wp_type == wp_type]
 
     def get_sequence(self, identifier):
         return self.sequences_dict.get(identifier, list())
@@ -239,8 +251,9 @@ class Profile:
             for i, mission in enumerate(station_msn_list, 1):
                 mission.number = i
 
-        for i, waypoint in enumerate(self.waypoints_as_list, 1):
-            waypoint.number = i
+        for _, waypoint_list in self.waypoints_dict.items():
+            for i, waypoint in enumerate(waypoint_list, 1):
+                waypoint.number = i
 
     @staticmethod
     def to_object(profile_data):
@@ -332,6 +345,7 @@ class Profile:
             wps.append(wp)
 
         profile = Profile(profile_name, waypoints=wps, aircraft=aircraft)
+        profile.update_waypoint_numbers()
         logger.debug(
             f"Fetched {profile_name} from DB, with {len(wps)} waypoints")
         return profile
