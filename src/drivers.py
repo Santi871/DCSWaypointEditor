@@ -1,6 +1,7 @@
 import socket
 from time import sleep
 from configparser import NoOptionError
+from src.objects import MSN, Waypoint
 
 
 class DriverException(Exception):
@@ -224,7 +225,7 @@ class HornetDriver(Driver):
         self.ufc("CLR")
         self.ufc("CLR")
 
-    def enter_missions(self, stations):
+    def enter_missions(self, missions):
         def stations_order(x):
             if x == 8:
                 return 0
@@ -236,6 +237,11 @@ class HornetDriver(Driver):
                 return 3
 
         sorted_stations = list()
+        stations = dict()
+        for mission in missions:
+            station_msn_list = stations.get(mission.station, list())
+            station_msn_list.append(mission)
+            stations[mission.station] = station_msn_list
 
         for k in sorted(stations, key=stations_order):
             sorted_stations.append(stations[k])
@@ -254,7 +260,7 @@ class HornetDriver(Driver):
         self.lmdi("6")
 
     def enter_all(self, profile):
-        self.enter_missions(profile.waypoints.get("MSN", dict()))
+        self.enter_missions(profile.msns_as_list)
         sleep(1)
         self.enter_waypoints(profile.waypoints_as_list, profile.sequences_dict)
 

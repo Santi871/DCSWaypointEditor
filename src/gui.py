@@ -1,4 +1,4 @@
-from src.objects import Wp, Profile
+from src.objects import Profile, Waypoint, MSN
 from src.logger import get_logger
 from peewee import DoesNotExist
 from LatLon23 import LatLon, Longitude, Latitude, string2latlon
@@ -11,7 +11,6 @@ import json
 import urllib.request
 import urllib.error
 import webbrowser
-import re
 import base64
 import pyperclip
 from slpp import slpp as lua
@@ -141,6 +140,10 @@ class GUI:
     def exit_capture(self):
         self.exit_quick_capture = True
 
+    @staticmethod
+    def get_profile_names():
+        return [profile.name for profile in Profile.list_all()]
+
     def create_gui(self):
         self.logger.debug("Creating GUI")
 
@@ -259,7 +262,7 @@ class GUI:
 
         col0 = [
             [PyGUI.Text("Select profile:")],
-            [PyGUI.Combo(values=[""] + self.editor.get_profile_names(), readonly=True,
+            [PyGUI.Combo(values=[""] + self.get_profile_names(), readonly=True,
                          enable_events=True, key='profileSelector', size=(27, 1))],
             [PyGUI.Listbox(values=list(), size=(30, 24),
                            enable_events=True, key='activesList')],
@@ -370,38 +373,15 @@ class GUI:
         )
         # TODO apply these limits when entering into aircraft
 
-        for wp_type, wp_list in self.profile.waypoints.items():
+        for wp in self.profile.waypoints:
+            namestr = str(wp)
 
-            if type(wp_list) == list:
-                for i, waypoint in enumerate(wp_list):
-                    namestr = f"{wp_type}{i+1}"
+            if wp.wp_type not in wp_types_limits[self.profile.aircraft] or \
+                    (wp_types_limits[self.profile.aircraft][wp.wp_type] is not None
+                     and wp.number > wp_types_limits[self.profile.aircraft][wp.wp_type]):
+                namestr = strike(namestr)
 
-                    if waypoint.sequence:
-                        namestr += f" | SEQ{waypoint.sequence}"
-
-                    if waypoint.name:
-                        namestr += f" | {waypoint.name}"
-
-                    if wp_type not in wp_types_limits[self.profile.aircraft] or \
-                            (wp_types_limits[self.profile.aircraft][wp_type] is not None
-                             and i + 1 > wp_types_limits[self.profile.aircraft][wp_type]):
-                        namestr = strike(namestr)
-
-                    values.append(namestr)
-
-            elif type(wp_list) == dict:
-                for station, station_msns in wp_list.items():
-                    for i, msn in enumerate(station_msns):
-                        namestr = f"MSN{i + 1}"
-                        namestr += f" | STA {station}"
-
-                        if msn.name:
-                            namestr += f" | {msn.name}"
-
-                        if "MSN" not in wp_types_limits[self.profile.aircraft]\
-                                or i + 1 > wp_types_limits[self.profile.aircraft]["MSN"]:
-                            namestr = strike(namestr)
-                        values.append(namestr)
+            values.append(namestr)
 
         if set_to_first:
             self.window.Element('activesList').Update(values=values, set_to_index=0)
@@ -434,14 +414,9 @@ class GUI:
         try:
             if self.values["MSN"]:
                 station = int(self.values.get("sequence", 0))
-                mission = Wp(position=position, elevation=int(elevation) or 0, name=name, wp_type="MSN",
-                             station=station)
-                stations = self.profile.waypoints.get("MSN", dict())
-                station_msns = stations.get(station, list())
-                station_msns.append(mission)
-                stations[station] = station_msns
-                self.profile.waypoints["MSN"] = stations
-                wpadded = True
+                number = len(self.profile.stations_dict.get(station, list()))+1
+                wp = MSN(position=position, elevation=int(elevation) or 0, name=name,
+                         station=station, number=number)
 
             elif self.values["WP"]:
                 sequence = self.values["sequence"]
@@ -453,19 +428,17 @@ class GUI:
                 if sequence and len(self.profile.get_sequence(sequence)) >= 15:
                     return False
 
-                waypoint = Wp(position, elevation=int(elevation or 0),
-                              name=name, sequence=sequence, wp_type="WP")
-                profile_waypoints = self.profile.waypoints.get("WP", list())
-                profile_waypoints.append(waypoint)
-                self.profile.waypoints["WP"] = profile_waypoints
+                wp = Waypoint(position, elevation=int(elevation or 0),
+                              name=name, sequence=sequence, wp_type="WP", number=len(self.profile.waypoints_as_list)+1)
 
                 if sequence not in self.profile.sequences:
                     self.profile.sequences.append(sequence)
 
-                wpadded = True
+            else:
+                return False
 
-            if wpadded:
-                self.update_waypoints_list()
+            self.profile.waypoints.append(wp)
+            self.update_waypoints_list()
         except ValueError:
             PyGUI.Popup("Error: missing data or invalid data format")
 
@@ -630,7 +603,7 @@ class GUI:
             return None, None, None
 
     def update_profiles_list(self, name):
-        profiles = self.editor.get_profile_names()
+        profiles = self.get_profile_names()
         self.window.Element("profileSelector").Update(values=[""] + profiles,
                                                       set_to_index=profiles.index(name) + 1)
 
@@ -642,28 +615,16 @@ class GUI:
         self.window.Element(wp_type).Update(value=True)
 
     def find_selected_waypoint(self):
-        # TODO update regex
         valuestr = unstrike(self.values['activesList'][0])
-        if "MSN" not in valuestr:
-            i = re.search("(\\d)+", valuestr).group(0)
-            mission = self.profile.waypoints["WP"][int(i) - 1]
-        else:
-            i, station = re.findall("(\\d)+", valuestr)[:2]
-            mission = self.profile.waypoints["MSN"][int(station)][int(i) - 1]
-
-        return mission
+        for wp in self.profile.waypoints:
+            if str(wp) == valuestr:
+                return wp
 
     def remove_selected_waypoint(self):
-        # TODO update regex
         valuestr = unstrike(self.values['activesList'][0])
-
-        if "MSN" not in valuestr:
-            i, = re.search("(\\d)+", valuestr).group(0)
-            self.profile.waypoints.get("WP", list()).pop(int(i) - 1)
-        else:
-            i, station = re.findall("(\\d)+", valuestr)[:2]
-            self.profile.waypoints.get("MSN", list())[
-                int(station)].pop(int(i) - 1)
+        for wp in self.profile.waypoints:
+            if str(wp) == valuestr:
+                self.profile.waypoints.remove(wp)
 
     def run(self):
         while True:
@@ -725,7 +686,7 @@ class GUI:
                     continue
 
                 Profile.delete(self.profile.profilename)
-                profiles = self.editor.get_profile_names()
+                profiles = self.get_profile_names()
                 self.window.Element("profileSelector").Update(
                     values=[""] + profiles)
                 self.profile = Profile('')
@@ -766,37 +727,11 @@ class GUI:
                 with open(filename, "r") as f:
                     d = json.load(f)
 
-                self.profile = Profile('')
-                self.profile.aircraft = d.get('aircraft', "hornet")
-
-                waypoints = dict()
-                waypoints_list = d.get('waypoints', list())
-                for wp in waypoints_list:
-                    wp_object = Wp(position=LatLon(Latitude(wp['latitude']), Longitude(wp['longitude'])),
-                                   name=wp.get("name", ""),
-                                   elevation=wp['elevation'],
-                                   sequence=wp.get("sequence", 0),
-                                   wp_type=wp.get("wp_type", "WP"),
-                                   station=wp.get("station", 0))
-
-                    if wp.get("wp_type") != "MSN":
-                        wp_type_list = waypoints.get(
-                            wp.get("wp_type", "WP"), list())
-                        wp_type_list.append(wp_object)
-                        waypoints[wp.get("wp_type", "WP")] = wp_type_list
-                    else:
-                        stations = waypoints.get("MSN", dict())
-                        station = stations.get(wp_object.station, list())
-                        station.append(wp_object)
-                        stations[wp_object.station] = station
-                        waypoints["MSN"] = stations
-
-                self.profile.waypoints = waypoints
+                self.profile = Profile.to_object(d)
                 self.update_waypoints_list()
 
-                if d.get("name", ""):
-                    self.profile.save(d.get("name"))
-                    self.update_profiles_list(d.get("name"))
+                if self.profile.profilename:
+                    self.update_profiles_list(self.profile.profilename)
 
             elif event == "capture":
                 if not self.capturing:

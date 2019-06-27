@@ -23,15 +23,6 @@ class WaypointEditor:
         except KeyError:
             raise DriverException(f"Undefined driver: {driver_name}")
 
-    def get_profile(self, profilename):
-        return Profile(profilename, self.db)
-
-    def get_profile_names(self):
-        return self.db.get_profile_names()
-
-    def save_profile(self, profile):
-        self.db.save_profile(profile)
-
     def enter_all(self, profile):
         self.set_driver(profile.aircraft)
         sleep(int(self.settings['PREFERENCES'].get('Grace_Period', 5)))

@@ -45,7 +45,7 @@ def load_base_data(basedata, basedict):
             if elev is None:
                 elev = base.get('locationDetails').get('altitude')
             position = LatLon(Latitude(degree=lat), Longitude(degree=lon))
-            basedict[name] = Wp(position=position, name=name, elevation=elev)
+            basedict[name] = Waypoint(position=position, name=name, elevation=elev)
 
 
 def generate_default_bases():
@@ -73,60 +73,6 @@ def generate_default_bases():
                     except AttributeError:
                         logger.warning(
                             f"Failed to build default base data from file: {filename}", exc_info=True)
-
-
-@dataclass
-class Wp:
-    position: Any
-    elevation: int = 0
-    name: str = ""
-    sequence: int = 0
-    wp_type: str = "WP"
-    station: int = 0
-
-    def __post_init__(self):
-        if type(self.position) == str:
-            base = default_bases.get(self.position)
-
-            if base is not None:
-                self.elevation = base.elev
-                self.name = self.position
-                self.position = base.position
-            else:
-                raise ValueError("Base name not found in default bases list")
-            return
-
-        if not type(self.position) == LatLon:
-            raise ValueError(
-                "Waypoint position must be a LatLon object or base name string")
-
-        if self.wp_type == "MSN" and not self.station:
-            raise ValueError("No station defined for PP MSN")
-
-    def to_dict(self):
-        return dict(
-            latitude=self.position.lat.decimal_degree,
-            longitude=self.position.lon.decimal_degree,
-            elevation=self.elevation,
-            name=self.name,
-            sequence=self.sequence,
-            wp_type=self.wp_type,
-            station=self.station
-        )
-
-    @staticmethod
-    def to_object(waypoint):
-        return Wp(
-            LatLon(
-                Latitude(waypoint.get('latitude')),
-                Longitude(waypoint.get('longitude'))
-            ),
-            elevation=waypoint.get('elevation'),
-            name=waypoint.get('name'),
-            sequence=waypoint.get('sequence'),
-            wp_type=waypoint.get('wp_type'),
-            station=waypoint.get('station')
-        )
 
 
 @dataclass
@@ -168,7 +114,22 @@ class Waypoint:
 
     @property
     def as_dict(self):
-        return asdict(self)
+        d = asdict(self)
+        del d["position"]
+        return d
+
+    @staticmethod
+    def to_object(waypoint):
+        return Waypoint(
+            LatLon(
+                Latitude(waypoint.get('latitude')),
+                Longitude(waypoint.get('longitude'))
+            ),
+            elevation=waypoint.get('elevation'),
+            name=waypoint.get('name'),
+            sequence=waypoint.get('sequence'),
+            wp_type=waypoint.get('wp_type')
+        )
 
 
 @dataclass
@@ -187,6 +148,20 @@ class MSN(Waypoint):
             strrep += f" | {self.name}"
         return strrep
 
+    @staticmethod
+    def to_object(waypoint):
+        return MSN(
+            LatLon(
+                Latitude(waypoint.get('latitude')),
+                Longitude(waypoint.get('longitude'))
+            ),
+            elevation=waypoint.get('elevation'),
+            name=waypoint.get('name'),
+            sequence=waypoint.get('sequence'),
+            wp_type=waypoint.get('wp_type'),
+            station=waypoint.get('station')
+        )
+
 
 class Profile:
     def __init__(self, profilename, waypoints=None, aircraft="hornet"):
@@ -194,14 +169,15 @@ class Profile:
         self.aircraft = aircraft
 
         if waypoints is None:
-            self.waypoints = {'WP': [], 'MSN': {}}
+            self.waypoints = list()
         else:
             self.waypoints = waypoints
+            self.update_waypoint_numbers()
 
     def update_sequences(self):
         sequences = set()
-        for waypoint in self.waypoints.get("WP", list()):
-            if waypoint.sequence:
+        for waypoint in self.waypoints:
+            if type(waypoint) == Waypoint and waypoint.sequence:
                 sequences.add(waypoint.sequence)
         sequences = list(sequences)
         sequences.sort()
@@ -209,7 +185,7 @@ class Profile:
 
     @property
     def has_waypoints(self):
-        return len(self.waypoints.get('WP', list())) > 0 or len(self.waypoints.get('MSN', list())) > 0
+        return len(self.waypoints) > 0
 
     @property
     def sequences(self):
@@ -217,23 +193,24 @@ class Profile:
 
     @property
     def waypoints_as_list(self):
-        wps = list()
-        for wp_type, wp_list in self.waypoints.items():
-            if wp_type != "MSN":
-                for wp in wp_list:
-                    wps.append(wp)
-        return wps
+        return [wp for wp in self.waypoints if type(wp) == Waypoint]
+
+    @property
+    def all_waypoints_as_list(self):
+        return [wp for wp in self.waypoints if not isinstance(wp, MSN)]
 
     @property
     def msns_as_list(self):
-        msns = list()
-        stations = self.waypoints.get("MSN", dict())
-        for station, msn_list in stations.items():
-            for msn in msn_list:
-                wp = Wp(position=msn.position, elevation=msn.elevation, name=msn.name, station=station,
-                        wp_type="MSN")
-                msns.append(wp)
-        return msns
+        return [wp for wp in self.waypoints if isinstance(wp, MSN)]
+
+    @property
+    def stations_dict(self):
+        stations = dict()
+        for mission in self.msns_as_list:
+            station_msn_list = stations.get(mission.station, list())
+            station_msn_list.append(mission)
+            stations[mission.station] = station_msn_list
+        return stations
 
     @property
     def sequences_dict(self):
@@ -252,32 +229,37 @@ class Profile:
 
     def to_dict(self):
         return dict(
-            waypoints=[waypoint.to_dict()
-                       for waypoint in self.waypoints_as_list + self.msns_as_list],
+            waypoints=[waypoint.as_dict for waypoint in self.waypoints],
             name=self.profilename,
             aircraft=self.aircraft
         )
+
+    def update_waypoint_numbers(self):
+        for _, station_msn_list in self.stations_dict.items():
+            for i, mission in enumerate(station_msn_list, 1):
+                mission.number = i
+
+        for i, waypoint in enumerate(self.waypoints_as_list, 1):
+            waypoint.number = i
 
     @staticmethod
     def to_object(profile_data):
         try:
             profile_name = profile_data["name"]
             waypoints = profile_data["waypoints"]
-            wps = [Wp.to_object(w) for w in waypoints if w['wp_type'] == 'WP']
-            msns = [Wp.to_object(w) for w in waypoints if w['wp_type'] == 'MSN']
-            missions = {}
-            for msn in msns:
-                msn_list = missions.get(msn.station, list())
-                msn_list.append(msn)
-                missions[msn.station] = msn_list
-
+            wps = [Waypoint.to_object(w) for w in waypoints if w['wp_type'] == 'WP']
+            msns = [MSN.to_object(w) for w in waypoints if w['wp_type'] == 'MSN']
             aircraft = profile_data["aircraft"]
-            return Profile(profile_name, waypoints={'WP': wps, 'MSN': missions}, aircraft=aircraft)
+            profile = Profile(profile_name, waypoints=wps+msns, aircraft=aircraft)
+            if profile.profilename:
+                profile.save()
+            return profile
+
         except Exception as e:
             logger.error(e)
             raise ValueError("Failed to load profile from data")
 
-    def save(self, profilename):
+    def save(self, profilename=None):
         delete_list = list()
         if profilename is not None:
             self.profilename = profilename
@@ -305,31 +287,28 @@ class Profile:
             )
             sequences_db_instances[sequencenumber] = sequence_db_instance
 
-        for wp_type, wp_list in self.waypoints.items():
-            if wp_type != "MSN":
-                for waypoint in wp_list:
-                    sequence = sequences_db_instances.get(waypoint.sequence)
-                    WaypointModel.create(
-                        name=waypoint.name,
-                        latitude=waypoint.position.lat.decimal_degree,
-                        longitude=waypoint.position.lon.decimal_degree,
-                        elevation=waypoint.elevation,
-                        profile=profile,
-                        sequence=sequence,
-                        wp_type=waypoint.wp_type
-                    )
+        for waypoint in self.waypoints:
+            if not isinstance(waypoint, MSN):
+                sequence = sequences_db_instances.get(waypoint.sequence)
+                WaypointModel.create(
+                    name=waypoint.name,
+                    latitude=waypoint.position.lat.decimal_degree,
+                    longitude=waypoint.position.lon.decimal_degree,
+                    elevation=waypoint.elevation,
+                    profile=profile,
+                    sequence=sequence,
+                    wp_type=waypoint.wp_type
+                )
             else:
-                for station, station_wps in wp_list.items():
-                    for waypoint in station_wps:
-                        WaypointModel.create(
-                            name=waypoint.name,
-                            latitude=waypoint.position.lat.decimal_degree,
-                            longitude=waypoint.position.lon.decimal_degree,
-                            elevation=waypoint.elevation,
-                            profile=profile,
-                            wp_type=waypoint.wp_type,
-                            station=station
-                        )
+                WaypointModel.create(
+                    name=waypoint.name,
+                    latitude=waypoint.position.lat.decimal_degree,
+                    longitude=waypoint.position.lon.decimal_degree,
+                    elevation=waypoint.elevation,
+                    profile=profile,
+                    wp_type=waypoint.wp_type,
+                    station=waypoint.station
+                )
 
         for instance in delete_list:
             instance.delete_instance()
@@ -340,36 +319,22 @@ class Profile:
         profile = ProfileModel.get(ProfileModel.name == profile_name)
         aircraft = profile.aircraft
 
-        wps = dict()
+        wps = list()
         for waypoint in profile.waypoints:
-            if waypoint.wp_type == "MSN":
-                wps_list = wps.get(waypoint.wp_type, dict()).get(
-                    waypoint.station, list())
+            if waypoint.wp_type != "MSN":
+                wp = Waypoint(LatLon(Latitude(waypoint.latitude), Longitude(waypoint.longitude)),
+                              elevation=waypoint.elevation, name=waypoint.name, sequence=waypoint.sequence,
+                              wp_type=waypoint.wp_type)
             else:
-                wps_list = wps.get(waypoint.wp_type, list())
+                wp = MSN(LatLon(Latitude(waypoint.latitude), Longitude(waypoint.longitude)),
+                         elevation=waypoint.elevation, name=waypoint.name, sequence=waypoint.sequence,
+                         wp_type=waypoint.wp_type, station=waypoint.station)
+            wps.append(wp)
 
-            if waypoint.sequence:
-                sequence = waypoint.sequence.identifier
-            else:
-                sequence = None
-
-            wp = Wp(LatLon(Latitude(waypoint.latitude), Longitude(waypoint.longitude)),
-                    elevation=waypoint.elevation, name=waypoint.name, sequence=sequence,
-                    wp_type=waypoint.wp_type, station=waypoint.station)
-
-            if waypoint.wp_type == "MSN":
-                stations = wps.get("MSN", dict())
-                station = stations.get(waypoint.station, list())
-                station.append(wp)
-                stations[waypoint.station] = station
-                wps["MSN"] = stations
-            else:
-                wps_list.append(wp)
-                wps[waypoint.wp_type] = wps_list
-
+        profile = Profile(profile_name, waypoints=wps, aircraft=aircraft)
         logger.debug(
             f"Fetched {profile_name} from DB, with {len(wps)} waypoints")
-        return Profile(profile_name, waypoints=wps, aircraft=aircraft)
+        return profile
 
     @staticmethod
     def delete(profile_name):
@@ -379,3 +344,7 @@ class Profile:
             waypoint.delete_instance()
 
         profile.delete_instance(recursive=True)
+
+    @staticmethod
+    def list_all():
+        return list(ProfileModel.select())
