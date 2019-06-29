@@ -1,8 +1,8 @@
 from time import sleep
-from src.objects import default_bases, Profile
+from src.objects import default_bases
 from src.db import DatabaseInterface
 from src.logger import get_logger
-from src.drivers import HornetDriver, HarrierDriver, MirageDriver, DriverException
+from src.drivers import HornetDriver, HarrierDriver, MirageDriver, TomcatDriver, DriverException
 
 
 class WaypointEditor:
@@ -12,10 +12,11 @@ class WaypointEditor:
         self.settings = settings
         self.db = DatabaseInterface(settings['PREFERENCES'].get("DB_Name", "profiles.db"))
         self.default_bases = default_bases
-        self.drivers = dict(hornet=HornetDriver(self.logger),
-                            harrier=HarrierDriver(self.logger),
-                            mirage=MirageDriver(self.logger))
-        self.driver = None
+        self.drivers = dict(hornet=HornetDriver(self.logger, settings),
+                            harrier=HarrierDriver(self.logger, settings),
+                            mirage=MirageDriver(self.logger, settings),
+                            tomcat=TomcatDriver(self.logger, settings))
+        self.driver = self.drivers["hornet"]
 
     def set_driver(self, driver_name):
         try:
@@ -23,17 +24,7 @@ class WaypointEditor:
         except KeyError:
             raise DriverException(f"Undefined driver: {driver_name}")
 
-    def get_profile(self, profilename):
-        return Profile(profilename, self.db)
-
-    def get_profile_names(self):
-        return self.db.get_profile_names()
-
-    def save_profile(self, profile):
-        self.db.save_profile(profile)
-
     def enter_all(self, profile):
-        self.set_driver(profile.aircraft)
         sleep(int(self.settings['PREFERENCES'].get('Grace_Period', 5)))
         self.driver.enter_all(profile)
 
