@@ -57,8 +57,14 @@ def first_time_setup_gui():
         [PyGUI.Text("Tesseract.exe Path:"), PyGUI.Input(default_tesseract_path, key="tesseract_path"),
          PyGUI.Button("Browse...", button_type=PyGUI.BUTTON_TYPE_BROWSE_FILE, target="tesseract_path")],
 
-        [PyGUI.Text("F10 Map Capture Key:"), PyGUI.Input(
+        [PyGUI.Text("F10 Map Capture Hotkey:"), PyGUI.Input(
             "ctrl+t", key="capture_key")],
+
+        [PyGUI.Text("Quick Capture Toggle Hotkey:"), PyGUI.Input(
+            "ctrl+shift+t", key="quick_capture_hotkey")],
+
+        [PyGUI.Text("Enter into Aircraft Hotkey (Optional):"), PyGUI.Input(
+            "", key="enter_aircraft_hotkey")],
 
         [PyGUI.Text("DCS-BIOS:"), PyGUI.Text(dcs_bios_detected, key="dcs_bios"),
          PyGUI.Button("Install", key="install_button", disabled=dcs_bios_detected == "Detected")],
@@ -110,6 +116,10 @@ class GUI:
         self.capturing = False
         self.capture_key = self.editor.settings.get(
             "PREFERENCES", "capture_key")
+        self.quick_capture_hotkey = self.editor.settings.get(
+            "PREFERENCES", "quick_capture_hotkey")
+        self.enter_aircraft_hotkey = self.editor.settings.get(
+            "PREFERENCES", "enter_aircraft_hotkey")
         self.software_version = software_version
         self.is_focused = True
         self.scaled_dcs_gui = False
@@ -137,6 +147,9 @@ class GUI:
 
         self.logger.info(f"Tesseract version is: {self.tesseract_version}")
         self.window = self.create_gui()
+        keyboard.add_hotkey(self.quick_capture_hotkey, self.toggle_quick_capture)
+        if self.enter_aircraft_hotkey != '':
+            keyboard.add_hotkey(self.enter_aircraft_hotkey, self.enter_coords_to_aircraft)
 
     def exit_capture(self):
         self.exit_quick_capture = True
@@ -463,10 +476,10 @@ class GUI:
     def import_from_string(self):
         # Load the encoded string from the clipboard
         encoded = pyperclip.paste()
-        decoded = base64.b64decode(encoded.encode('utf-8'))
-        e = json.loads(decoded)
-        self.logger.debug(e)
         try:
+            decoded = base64.b64decode(encoded.encode('utf-8'))
+            e = json.loads(decoded)
+            self.logger.debug(e)
             self.profile = Profile.to_object(e)
             self.logger.debug(self.profile.to_dict())
             self.update_waypoints_list(set_to_first=True)
@@ -553,6 +566,29 @@ class GUI:
         added = self.add_waypoint(position, elevation)
         if not added:
             self.stop_quick_capture()
+            
+
+    def toggle_quick_capture(self):
+        if self.capturing:
+            self.stop_quick_capture()
+        else:
+            self.start_quick_capture()
+
+
+    def start_quick_capture(self):
+        self.disable_coords_input()
+        self.window.Element('capture').Update(
+            text="Stop capturing")
+        self.window.Element('quick_capture').Update(disabled=True)
+        self.window.Element('capture_status').Update("Status: Capturing...")
+        self.window.Refresh()
+        keyboard.add_hotkey(
+            self.capture_key,
+            self.input_parsed_coords, 
+            timeout=1
+        )
+        self.capturing = True
+
 
     def input_tomcat_alignment(self):
         try:
@@ -644,6 +680,11 @@ class GUI:
         for wp in self.profile.waypoints:
             if str(wp) == valuestr:
                 self.profile.waypoints.remove(wp)
+
+    def enter_coords_to_aircraft(self):
+        self.window.Element('enter').Update(disabled=True)
+        self.editor.enter_all(self.profile)
+        self.window.Element('enter').Update(disabled=False)
 
     def run(self):
         while True:
@@ -755,16 +796,7 @@ class GUI:
 
             elif event == "capture":
                 if not self.capturing:
-                    self.disable_coords_input()
-                    self.window.Element('capture').Update(
-                        text="Stop capturing")
-                    self.window.Element('quick_capture').Update(disabled=True)
-                    self.window.Element('capture_status').Update(
-                        "Status: Capturing...")
-                    self.window.Refresh()
-                    keyboard.add_hotkey(
-                        self.capture_key, self.input_parsed_coords, timeout=1)
-                    self.capturing = True
+                    self.start_quick_capture()
                 else:
                     self.stop_quick_capture()
 
@@ -789,9 +821,7 @@ class GUI:
                         base.position, base.elevation, base.name)
 
             elif event == "enter":
-                self.window.Element('enter').Update(disabled=True)
-                self.editor.enter_all(self.profile)
-                self.window.Element('enter').Update(disabled=False)
+                self.enter_coords_to_aircraft()
 
             elif event in ("MSN", "WP", "HA", "FP", "ST", "DP", "IP", "HB"):
                 self.select_wp_type(event)

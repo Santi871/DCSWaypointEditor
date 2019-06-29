@@ -67,8 +67,9 @@ def first_time_setup():
     config.set("PREFERENCES", "tesseract_path", values.get("tesseract_path"))
     config.set("PREFERENCES", "dcs_path", dcs_path or default_dcs_path)
     config.set("PREFERENCES", "db_name", "profiles_new.db")
-    config.set("PREFERENCES", "capture_key",
-               values.get("capture_key") or "ctrl+t")
+    config.set("PREFERENCES", "capture_key", values.get("capture_key") or "ctrl+t")
+    config.set("PREFERENCES", "quick_capture_hotkey", values.get("quick_capture_hotkey") or "ctrl+shift+t")
+    config.set("PREFERENCES", "enter_aircraft_hotkey", values.get("enter_aircraft_hotkey") or '')
     config.set("PREFERENCES", "log_raw_tesseract_output", "false")
 
     with open("settings.ini", "w+") as f:
