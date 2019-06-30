@@ -13,6 +13,7 @@ DCS_BIOS_URL = "https://github.com/DCSFlightpanels/dcs-bios/releases/download/{}
 
 logger = get_logger(__name__)
 
+
 def install_dcs_bios(dcs_path):
     try:
         with open(dcs_path + "Scripts\\Export.lua", "r") as f:
@@ -25,25 +26,21 @@ def install_dcs_bios(dcs_path):
             f.write(
                 "\ndofile(lfs.writedir()..[[Scripts\\DCS-BIOS\\BIOS.lua]])\n")
 
-    try:
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            url = DCS_BIOS_URL.format(DCS_BIOS_VERSION)
-            response = requests.get(url, stream=True)
-            response.raise_for_status()
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        url = DCS_BIOS_URL.format(DCS_BIOS_VERSION)
+        response = requests.get(url, stream=True)
+        response.raise_for_status()
 
-            with tempfile.TemporaryFile() as tmp_file:
-                for block in response.iter_content(1024):
-                    tmp_file.write(block)
+        with tempfile.TemporaryFile() as tmp_file:
+            for block in response.iter_content(1024):
+                tmp_file.write(block)
 
-                with zipfile.ZipFile(tmp_file) as zip_ref:
-                    zip_ref.extractall(tmp_dir)
+            with zipfile.ZipFile(tmp_file) as zip_ref:
+                zip_ref.extractall(tmp_dir)
 
-                copytree(tmp_dir + '\\DCS-BIOS', dcs_path + "Scripts\\DCS-BIOS")
+            copytree(tmp_dir + '\\DCS-BIOS', dcs_path + "Scripts\\DCS-BIOS")
 
-                PyGUI.Popup('DCS-BIOS v{} successfully downloaded and installed'.format(DCS_BIOS_VERSION))
-    except Exception as e:
-        PyGUI.Popup('Failed to download and/or install DCS-BIOS.  Please check log file for more information')
-        logger.error(e)
+            PyGUI.Popup('DCS-BIOS v{} successfully downloaded and installed'.format(DCS_BIOS_VERSION))
 
 
 def first_time_setup():
@@ -67,11 +64,12 @@ def first_time_setup():
             break
         elif event == "install_button":
             try:
+                setup_logger.info("Installing DCS BIOS...")
                 install_dcs_bios(dcs_path)
                 gui.Element("install_button").Update(disabled=True)
                 gui.Element("accept_button").Update(disabled=False)
                 gui.Element("dcs_bios").Update(value="Installed")
-            except (FileExistsError, FileNotFoundError):
+            except (FileExistsError, FileNotFoundError, requests.HTTPError):
                 gui.Element("dcs_bios").Update(value="Failed to install")
                 setup_logger.error("DCS-BIOS failed to install", exc_info=True)
         elif event == "dcs_path":
