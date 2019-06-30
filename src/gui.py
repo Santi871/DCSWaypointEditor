@@ -104,6 +104,16 @@ def check_version(current_version):
             return False
 
 
+def try_get_setting(settings, setting_name, setting_fallback, section="PREFERENCES"):
+    if settings.has_option(section, setting_name):
+        return settings.get(section, setting_name)
+    else:
+        settings[section][setting_name] = setting_fallback
+        with open("settings.ini", "w") as configfile:
+            settings.write(configfile)
+        return setting_fallback
+
+
 class GUI:
     def __init__(self, editor, software_version):
         self.logger = get_logger("gui")
@@ -114,12 +124,9 @@ class GUI:
         self.exit_quick_capture = False
         self.values = None
         self.capturing = False
-        self.capture_key = self.editor.settings.get(
-            "PREFERENCES", "capture_key")
-        self.quick_capture_hotkey = self.editor.settings.get(
-            "PREFERENCES", "quick_capture_hotkey")
-        self.enter_aircraft_hotkey = self.editor.settings.get(
-            "PREFERENCES", "enter_aircraft_hotkey")
+        self.capture_key = try_get_setting(self.editor.settings, "capture_key", "ctrl+t")
+        self.quick_capture_hotkey = try_get_setting(self.editor.settings, "quick_capture_hotkey", "ctrl+alt+t")
+        self.enter_aircraft_hotkey = try_get_setting(self.editor.settings, "enter_aircraft_hotkey", "ctrl+shift+t")
         self.software_version = software_version
         self.is_focused = True
         self.scaled_dcs_gui = False
@@ -384,6 +391,7 @@ class GUI:
 
     def update_waypoints_list(self, set_to_first=False):
         values = list()
+        self.profile.update_waypoint_numbers()
 
         for wp in sorted(self.profile.waypoints, key=lambda waypoint: waypoint.wp_type):
             namestr = str(wp)
@@ -566,14 +574,12 @@ class GUI:
         added = self.add_waypoint(position, elevation)
         if not added:
             self.stop_quick_capture()
-            
 
     def toggle_quick_capture(self):
         if self.capturing:
             self.stop_quick_capture()
         else:
             self.start_quick_capture()
-
 
     def start_quick_capture(self):
         self.disable_coords_input()
@@ -588,7 +594,6 @@ class GUI:
             timeout=1
         )
         self.capturing = True
-
 
     def input_tomcat_alignment(self):
         try:
