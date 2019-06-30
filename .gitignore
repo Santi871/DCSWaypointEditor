@@ -1,6 +1,6 @@
 __pycache__
 log.txt
-settings.ini
+/settings.ini
 .vscode
 .idea/
 *.db
