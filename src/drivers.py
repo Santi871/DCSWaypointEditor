@@ -71,7 +71,7 @@ class Driver:
 
     def press_with_delay(self, key, delay_after=None, delay_release=None, raw=False):
         if not key:
-            return
+            return False
 
         if delay_after is None:
             delay_after = self.short_delay
@@ -79,18 +79,23 @@ class Driver:
         if delay_release is None:
             delay_release = self.short_delay
 
+        encoded_str = key.replace("OSB", "OS").encode("utf-8")
+
         # TODO get rid of the OSB -> OS replacement
         if not raw:
-            self.s.sendto(f"{key} 1\n".replace("OSB", "OS").encode(
+            sent = self.s.sendto(f"{key} 1\n".replace("OSB", "OS").encode(
                 "utf-8"), (self.host, self.port))
             sleep(delay_release)
 
             self.s.sendto(f"{key} 0\n".replace("OSB", "OS").encode(
                 "utf-8"), (self.host, self.port))
+            strlen = len(encoded_str) + 3
         else:
-            self.s.sendto(f"{key}\n".encode("utf-8"), (self.host, self.port))
+            sent = self.s.sendto(f"{key}\n".encode("utf-8"), (self.host, self.port))
+            strlen = len(encoded_str) + 1
 
         sleep(delay_after)
+        return sent == strlen
 
     def validate_waypoint(self, waypoint):
         try:
