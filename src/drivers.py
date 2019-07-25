@@ -1,4 +1,5 @@
 import socket
+import re
 from time import sleep
 from configparser import NoOptionError
 
@@ -504,6 +505,82 @@ class TomcatDriver(Driver):
 
             self.enter_coords(wp.position, wp.elevation)
             self.cap("CLEAR")
+
+    def enter_all(self, profile):
+        self.enter_waypoints(self.validate_waypoints(profile.waypoints_as_list))
+
+
+class WarthogDriver(Driver):
+    def __init__(self, logger, config):
+        super().__init__(logger, config)
+        self.limits = dict(WP=99)
+
+    def cdu(self, num, delay_after=None, delay_release=None):
+        key = f"CDU_{num}"
+        self.press_with_delay(key, delay_after=delay_after, delay_release=delay_release)
+
+    def clear_input(self, repeat=3):
+        for i in range(0, repeat):
+            self.cdu("CLR")
+
+    def enter_waypoint_name(self, wp):
+        result = re.sub(r'[^A-Za-z0-9]', '', wp.name)
+        if result == "":
+            result = f"WP{wp.number}"
+        self.logger.debug("Waypoint name: " + result)
+        self.clear_input()
+        for character in result:
+            self.logger.debug("Entering value: " + character)
+            self.cdu(character.upper(), delay_after=self.short_delay)
+
+        self.cdu("LSK_3R")
+
+    def enter_number(self, number):
+        for num in str(number):
+            if num == '.':
+                break
+            
+            self.cdu(num)
+
+
+    def enter_coords(self, latlong):
+        lat_str, lon_str = latlon_tostring(latlong, decimal_minutes_mode=False, easting_zfill=3)
+        self.logger.debug(f"Entering coords string: {lat_str[:-2]}, {lon_str[:-2]}")
+
+        self.clear_input(repeat=2)
+
+        if latlong.lat.degree > 0:
+            self.cdu("N")
+        else:
+            self.cdu("S")
+        self.enter_number(lat_str)
+        self.cdu("LSK_7L")
+        self.clear_input(repeat=2)
+
+        if latlong.lon.degree > 0:
+            self.cdu("E")
+        else:
+            self.cdu("W")
+        self.enter_number(lon_str)
+        self.cdu("LSK_9L")
+        self.clear_input(repeat=2)
+
+    def enter_elevation(self, elev):
+        self.clear_input(repeat=2)
+        self.enter_number(elev)
+        self.cdu("LSK_5L")
+        self.clear_input(repeat=2)
+
+    def enter_waypoints(self, wps):
+        self.cdu("WP", self.short_delay)
+        self.cdu("LSK_3L", self.medium_delay)
+        self.logger.debug("Number of waypoints: " + str(len(wps)))
+        for wp in wps:
+            self.logger.debug(f"Entering WP: {wp}")
+            self.cdu("LSK_7R", self.short_delay)
+            self.enter_waypoint_name(wp)
+            self.enter_coords(wp.position)
+            self.enter_elevation(wp.elevation)
 
     def enter_all(self, profile):
         self.enter_waypoints(self.validate_waypoints(profile.waypoints_as_list))
