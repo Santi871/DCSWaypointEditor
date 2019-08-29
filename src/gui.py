@@ -7,7 +7,6 @@ from pathlib import Path
 import pytesseract
 import keyboard
 import os
-import json
 import urllib.request
 import urllib.error
 import webbrowser
@@ -16,6 +15,20 @@ import pyperclip
 from slpp import slpp as lua
 import src.pymgrs as mgrs
 import PySimpleGUI as PyGUI
+import zlib
+
+
+def json_zip(j):
+    j = base64.b64encode(
+        zlib.compress(
+            j.encode('utf-8')
+        )
+    ).decode('ascii')
+    return j
+
+
+def json_unzip(j):
+    return zlib.decompress(base64.b64decode(j)).decode('utf-8')
 
 
 def strike(text):
@@ -333,7 +346,7 @@ class GUI:
         elif mode == "station":
             self.window.Element("sequence_text").Update(value="    Station:")
             self.window.Element("sequence").Update(
-                values=(8, 2, 7, 3), value=8, disabled=False)
+                values=(8, 7, 3, 2), value=8, disabled=False)
 
     def update_position(self, position=None, elevation=None, name=None, update_mgrs=True, aircraft=None,
                         waypoint_type=None):
@@ -393,7 +406,8 @@ class GUI:
         values = list()
         self.profile.update_waypoint_numbers()
 
-        for wp in sorted(self.profile.waypoints, key=lambda waypoint: waypoint.wp_type):
+        for wp in sorted(self.profile.waypoints,
+                         key=lambda waypoint: waypoint.wp_type if waypoint.wp_type != "MSN" else str(waypoint.station)):
             namestr = str(wp)
 
             if not self.editor.driver.validate_waypoint(wp):
@@ -473,22 +487,17 @@ class GUI:
         return captured_map_coords
 
     def export_to_string(self):
-        e = self.profile.to_dict()
-        self.logger.debug(e)
-
-        dump = json.dumps(e)
-        encoded = base64.b64encode(dump.encode('utf-8'))
-        pyperclip.copy(encoded.decode('utf-8'))
+        dump = str(self.profile)
+        encoded = json_zip(dump)
+        pyperclip.copy(encoded)
         PyGUI.Popup('Encoded string copied to clipboard, paste away!')
 
     def import_from_string(self):
         # Load the encoded string from the clipboard
         encoded = pyperclip.paste()
         try:
-            decoded = base64.b64decode(encoded.encode('utf-8'))
-            e = json.loads(decoded)
-            self.logger.debug(e)
-            self.profile = Profile.to_object(e)
+            decoded = json_unzip(encoded)
+            self.profile = Profile.from_string(decoded)
             self.logger.debug(self.profile.to_dict())
             self.update_waypoints_list(set_to_first=True)
             PyGUI.Popup('Loaded waypoint data from encoded string successfully')
@@ -754,7 +763,7 @@ class GUI:
                 profiles = self.get_profile_names()
                 self.window.Element("profileSelector").Update(
                     values=[""] + profiles)
-                self.profile = Profile('')
+                self.load_new_profile()
                 self.update_waypoints_list()
                 self.update_position()
 
@@ -772,8 +781,6 @@ class GUI:
                     PyGUI.Popup("Profile not found")
 
             elif event == "Export to file":
-                e = self.profile.to_dict()
-
                 filename = PyGUI.PopupGetFile("Enter file name", "Exporting profile", default_extension=".json",
                                               save_as=True, file_types=(("JSON File", "*.json"),))
 
@@ -781,7 +788,7 @@ class GUI:
                     continue
 
                 with open(filename + ".json", "w+") as f:
-                    json.dump(e, f, indent=4)
+                    f.write(str(self.profile))
 
             elif event == "Import from file":
                 filename = PyGUI.PopupGetFile(
@@ -791,9 +798,7 @@ class GUI:
                     continue
 
                 with open(filename, "r") as f:
-                    d = json.load(f)
-
-                self.profile = Profile.to_object(d)
+                    self.profile = Profile.from_string(f.read())
                 self.update_waypoints_list()
 
                 if self.profile.profilename:
@@ -849,11 +854,11 @@ class GUI:
                 mgrs_string = self.window.Element("mgrs").Get()
                 if mgrs_string:
                     try:
-                        decoded_mgrs = mgrs.UTMtoLL(mgrs.decode(mgrs_string))
+                        decoded_mgrs = mgrs.UTMtoLL(mgrs.decode(mgrs_string.replace(" ", "")))
                         position = LatLon(Latitude(degree=decoded_mgrs["lat"]), Longitude(
                             degree=decoded_mgrs["lon"]))
                         self.update_position(position, update_mgrs=False)
-                    except (TypeError, ValueError) as e:
+                    except (TypeError, ValueError, UnboundLocalError) as e:
                         self.logger.error(f"Failed to decode MGRS: {e}")
 
             elif event in ("hornet", "tomcat", "harrier", "warthog", "mirage"):

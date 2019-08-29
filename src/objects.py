@@ -49,7 +49,7 @@ def load_base_data(basedata, basedict):
 
 
 def generate_default_bases():
-    logger = get_logger("default_bases_builder")
+    default_bases_builder_logger = get_logger("default_bases_builder")
 
     pgdata = update_base_data("https://raw.githubusercontent.com/Santi871/HornetWaypointEditor/master/data/"
                               "pg.json?token=ACQW6PPI77ATCRJ2RZSDSBC44UAOG", f".\\data\\pg.json")
@@ -58,9 +58,9 @@ def generate_default_bases():
                                 "cauc.json?token=ACQW6PIVKSD72T7FLOBQHCC44W334", f".\\data\\cauc.json")
 
     if pgdata and caucdata:
-        logger.info("PG and Caucasus default bases updated succesfully")
+        default_bases_builder_logger.info("PG and Caucasus default bases updated succesfully")
     else:
-        logger.warning("Failed to update PG and Caucasus default bases")
+        default_bases_builder_logger.warning("Failed to update PG and Caucasus default bases")
 
     for _, _, files in walk(".\\data"):
         for filename in files:
@@ -68,10 +68,10 @@ def generate_default_bases():
                 with open(".\\data\\" + filename, "r") as f:
                     try:
                         load_base_data(json.load(f), default_bases)
-                        logger.info(
+                        default_bases_builder_logger.info(
                             f"Default base data built succesfully from file: {filename}")
                     except AttributeError:
-                        logger.warning(
+                        default_bases_builder_logger.warning(
                             f"Failed to build default base data from file: {filename}", exc_info=True)
 
 
@@ -174,6 +174,9 @@ class Profile:
             self.waypoints = waypoints
             self.update_waypoint_numbers()
 
+    def __str__(self):
+        return json.dumps(self.to_dict())
+
     def update_sequences(self):
         sequences = set()
         for waypoint in self.waypoints:
@@ -256,11 +259,12 @@ class Profile:
                 waypoint.number = i
 
     @staticmethod
-    def to_object(profile_data):
+    def from_string(profile_string):
+        profile_data = json.loads(profile_string)
         try:
             profile_name = profile_data["name"]
             waypoints = profile_data["waypoints"]
-            wps = [Waypoint.to_object(w) for w in waypoints if w['wp_type'] == 'WP']
+            wps = [Waypoint.to_object(w) for w in waypoints if w['wp_type'] != 'MSN']
             msns = [MSN.to_object(w) for w in waypoints if w['wp_type'] == 'MSN']
             aircraft = profile_data["aircraft"]
             profile = Profile(profile_name, waypoints=wps+msns, aircraft=aircraft)
