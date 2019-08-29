@@ -261,7 +261,7 @@ class GUI:
                 PyGUI.Radio("F-14A/B", group_id="ac_type",
                             disabled=False, key="tomcat", enable_events=True),
                 PyGUI.Radio("A-10C", group_id="ac_type",
-                            disabled=True, key="warthog", enable_events=True),
+                            disabled=False, key="warthog", enable_events=True),
             ]
         ]
 

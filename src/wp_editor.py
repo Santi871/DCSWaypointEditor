@@ -2,7 +2,7 @@ from time import sleep
 from src.objects import default_bases
 from src.db import DatabaseInterface
 from src.logger import get_logger
-from src.drivers import HornetDriver, HarrierDriver, MirageDriver, TomcatDriver, DriverException
+from src.drivers import HornetDriver, HarrierDriver, MirageDriver, TomcatDriver, DriverException, WarthogDriver
 
 
 class WaypointEditor:
@@ -15,7 +15,8 @@ class WaypointEditor:
         self.drivers = dict(hornet=HornetDriver(self.logger, settings),
                             harrier=HarrierDriver(self.logger, settings),
                             mirage=MirageDriver(self.logger, settings),
-                            tomcat=TomcatDriver(self.logger, settings))
+                            tomcat=TomcatDriver(self.logger, settings),
+                            warthog=WarthogDriver(self.logger, settings))
         self.driver = self.drivers["hornet"]
 
     def set_driver(self, driver_name):
