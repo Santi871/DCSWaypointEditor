@@ -299,17 +299,15 @@ class GUI:
             [PyGUI.Text("Select profile:")],
             [PyGUI.Combo(values=[""] + self.get_profile_names(), readonly=True,
                          enable_events=True, key='profileSelector', size=(27, 1))],
-            [PyGUI.Listbox(values=list(), size=(30, 24),
+            [PyGUI.Listbox(values=list(), size=(30, 27),
                            enable_events=True, key='activesList')],
             [PyGUI.Button("Add", size=(12, 1)),
              PyGUI.Button("Update", size=(12, 1))],
             [PyGUI.Button("Remove", size=(26, 1))],
+            # [PyGUI.Button("Move up", size=(12, 1)),
+            # PyGUI.Button("Move down", size=(12, 1))],
             [PyGUI.Button("Save profile", size=(12, 1)),
              PyGUI.Button("Delete profile", size=(12, 1))],
-            [PyGUI.Button("Export to file", size=(12, 1)),
-             PyGUI.Button("Import from file", size=(12, 1))],
-            [PyGUI.Button("Encode to String", size=(12, 1)),
-             PyGUI.Button("Decode from String", size=(12, 1))],
             [PyGUI.Text(f"Version: {self.software_version}")]
         ]
 
@@ -325,6 +323,12 @@ class GUI:
         ]
 
         colmain1 = [
+            [PyGUI.MenuBar([["Profile",
+                             [[
+                                 ["Import", ["Paste as string from clipboard", "Load from encoded file"]]],
+                                 "Export", ["Copy as string to clipboard", "Copy plain text to clipboard",
+                                            "Save as encoded file"],
+                              ]]])],
             [PyGUI.Column(col1)],
         ]
 
@@ -498,8 +502,11 @@ class GUI:
         try:
             decoded = json_unzip(encoded)
             self.profile = Profile.from_string(decoded)
+            self.profile.profilename = ""
             self.logger.debug(self.profile.to_dict())
+            self.editor.set_driver(self.profile.aircraft)
             self.update_waypoints_list(set_to_first=True)
+            self.window.Element("profileSelector").Update(set_to_index=0)
             PyGUI.Popup('Loaded waypoint data from encoded string successfully')
         except Exception as e:
             self.logger.error(e, exc_info=True)
@@ -703,8 +710,8 @@ class GUI:
     def run(self):
         while True:
             event, self.values = self.window.Read()
-            # self.logger.debug(f"Event: {event}")
-            # self.logger.debug(f"Values: {self.values}")
+            self.logger.debug(f"Event: {event}")
+            self.logger.debug(f"Values: {self.values}")
 
             if event is None or event == 'Exit':
                 self.logger.info("Exiting...")
@@ -715,10 +722,10 @@ class GUI:
                 if position is not None:
                     self.add_waypoint(position, elevation, name)
 
-            elif event == "Encode to String":
+            elif event == "Copy as string to clipboard":
                 self.export_to_string()
 
-            elif event == "Decode from String":
+            elif event == "Paste as string from clipboard":
                 self.import_from_string()
 
             elif event == "Update":
@@ -780,7 +787,7 @@ class GUI:
                 except DoesNotExist:
                     PyGUI.Popup("Profile not found")
 
-            elif event == "Export to file":
+            elif event == "Save as encoded file":
                 filename = PyGUI.PopupGetFile("Enter file name", "Exporting profile", default_extension=".json",
                                               save_as=True, file_types=(("JSON File", "*.json"),))
 
@@ -790,7 +797,12 @@ class GUI:
                 with open(filename + ".json", "w+") as f:
                     f.write(str(self.profile))
 
-            elif event == "Import from file":
+            elif event == "Copy plain text to clipboard":
+                profile_string = self.profile.to_readable_string()
+                pyperclip.copy(profile_string)
+                PyGUI.Popup("Profile copied as plain text to clipboard")
+
+            elif event == "Load from encoded file":
                 filename = PyGUI.PopupGetFile(
                     "Enter file name", "Importing profile")
 
