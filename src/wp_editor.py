@@ -26,6 +26,7 @@ class WaypointEditor:
             raise DriverException(f"Undefined driver: {driver_name}")
 
     def enter_all(self, profile):
+        self.logger.info(f"Entering waypoints for aircraft: {profile.aircraft}")
         sleep(int(self.settings['PREFERENCES'].get('Grace_Period', 5)))
         self.driver.enter_all(profile)
 
