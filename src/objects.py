@@ -258,6 +258,23 @@ class Profile:
             for i, waypoint in enumerate(waypoint_list, 1):
                 waypoint.number = i
 
+    def to_readable_string(self):
+        readable_string = "Waypoints:\n\n"
+        for wp in self.waypoints:
+            if wp.wp_type != "MSN":
+                position = LatLon(Latitude(wp.latitude), Longitude(wp.longitude)).to_string("d%°%m%'%S%\"%H")
+                readable_string += str(wp)
+                readable_string += f": {position[0]} {position[1]} | {wp.elevation}ft\n"
+
+        readable_string += "\nPreplanned missions:\n\n"
+
+        for wp in sorted(self.waypoints_of_type("MSN"), key=lambda waypoint: waypoint.station):
+            if wp.wp_type == "MSN":
+                position = LatLon(Latitude(wp.latitude), Longitude(wp.longitude)).to_string("d%°%m%'%S%\"%H")
+                readable_string += str(wp)
+                readable_string += f": {position[0]} {position[1]} | {wp.elevation}ft\n"
+        return readable_string
+
     @staticmethod
     def from_string(profile_string):
         profile_data = json.loads(profile_string)
@@ -338,13 +355,18 @@ class Profile:
 
         wps = list()
         for waypoint in profile.waypoints:
+            try:
+                sequence = waypoint.sequence.identifier
+            except AttributeError:
+                sequence = 0
+
             if waypoint.wp_type != "MSN":
                 wp = Waypoint(LatLon(Latitude(waypoint.latitude), Longitude(waypoint.longitude)),
-                              elevation=waypoint.elevation, name=waypoint.name, sequence=waypoint.sequence,
+                              elevation=waypoint.elevation, name=waypoint.name, sequence=sequence,
                               wp_type=waypoint.wp_type)
             else:
                 wp = MSN(LatLon(Latitude(waypoint.latitude), Longitude(waypoint.longitude)),
-                         elevation=waypoint.elevation, name=waypoint.name, sequence=waypoint.sequence,
+                         elevation=waypoint.elevation, name=waypoint.name, sequence=sequence,
                          wp_type=waypoint.wp_type, station=waypoint.station)
             wps.append(wp)
 
