@@ -54,8 +54,9 @@ in the capture status textbox.
 
 #### F10 map quick capture
 
- Quick capture works in a similar way to regular coordinates capturing, except it will automatically add a waypoint
-at the desired position every time the F10 map capture keybind is pressed.
+Quick capture works in a similar way to regular coordinates capturing, except it will automatically add a waypoint
+at the desired position every time the F10 map capture keybind is pressed.  This can be toggled on/off with a
+hotkey (default is `LCtrl+LShift+T`).
 
 #### Preset coordinates
 
@@ -68,6 +69,9 @@ Hornet JDAM preplanned missions work in a similar way to waypoints, however, you
 for the mission to be assigned using the station selector.
 
 #### Entering a list of waypoints into your aircraft
+
+An optional hotkey can be assigned to enter coordinates into the aircraft.  This is done during initial setup
+of the application.
 
 ##### F/A-18C
 
@@ -112,6 +116,18 @@ Profiles may be imported from a file that was previously exported.
 
 You may add more preset locations by adding more JSON formatted files in the data folder,
 following the format in `pg.json` and `cauc.json`.
+
+#### Exporting to encoded string
+
+Support for exporting current profile to an encoded string has been implemented to allow for quick sharing
+of waypoint and mission data to other people.  Once you have created a mission, click the `Encode to String`
+button.  This will copy an encoded string to your clipboard to share with other users.
+
+#### Importing from encoded string
+
+Once another user has sent their encoded string to yourself, just copy the string to your clipboard (default `LCtrl+C`)
+and press the `Decode from String` button in the application.  If successful, their mission data should be imported into
+a new profile and a pop-up should appear letting you know import was successful.
 
 ## Known issues
 

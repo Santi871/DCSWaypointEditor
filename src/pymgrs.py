@@ -118,17 +118,17 @@ def LLtoUTM(lat, lon):
     A = math.cos(LatRad) * (LongRad - LongOriginRad)
 
     M = a * ((
-                         1 - eccSquared / 4 - 3 * eccSquared * eccSquared / 64 - 5 * eccSquared * eccSquared * eccSquared / 256) * LatRad - (
-                         3 * eccSquared / 8 + 3 * eccSquared * eccSquared / 32 + 45 * eccSquared * eccSquared * eccSquared / 1024) * math.sin(
+        1 - eccSquared / 4 - 3 * eccSquared * eccSquared / 64 - 5 * eccSquared * eccSquared * eccSquared / 256) * LatRad - (
+        3 * eccSquared / 8 + 3 * eccSquared * eccSquared / 32 + 45 * eccSquared * eccSquared * eccSquared / 1024) * math.sin(
         2 * LatRad) + (
-                         15 * eccSquared * eccSquared / 256 + 45 * eccSquared * eccSquared * eccSquared / 1024) * math.sin(
+        15 * eccSquared * eccSquared / 256 + 45 * eccSquared * eccSquared * eccSquared / 1024) * math.sin(
         4 * LatRad) - (35 * eccSquared * eccSquared * eccSquared / 3072) * math.sin(6 * LatRad))
 
     UTMEasting = (k0 * N * (A + (1 - T + C) * A * A * A / 6.0 + (
-                5 - 18 * T + T * T + 72 * C - 58 * eccPrimeSquared) * A * A * A * A * A / 120.0) + 500000.0)
+        5 - 18 * T + T * T + 72 * C - 58 * eccPrimeSquared) * A * A * A * A * A / 120.0) + 500000.0)
 
     UTMNorthing = (k0 * (M + N * math.tan(LatRad) * (A * A / 2 + (5 - T + 9 * C + 4 * C * C) * A * A * A * A / 24.0 + (
-                61 - 58 * T + T * T + 600 * C - 330 * eccPrimeSquared) * A * A * A * A * A * A / 720.0)))
+        61 - 58 * T + T * T + 600 * C - 330 * eccPrimeSquared) * A * A * A * A * A * A / 720.0)))
 
     if Lat < 0.0:
         UTMNorthing += 10000000.0  # 10000000 meter offset for
@@ -237,7 +237,7 @@ def encode(utm, accuracy):
 
     return str(utm['zoneNumber']) + utm['zoneLetter'] + str(
         get100kID(utm['easting'], utm['northing'], utm['zoneNumber'])) + seasting[-5:][0:accuracy] + snorthing[-5:][
-                                                                                                     0:accuracy]
+        0:accuracy]
 
 
 """"
@@ -391,7 +391,8 @@ def decode(mgrsString):
 
     # Should we check the zone letter here? Why not.
     if zoneLetter <= 'A' or zoneLetter == 'B' or zoneLetter == 'Y' or zoneLetter >= 'Z' or zoneLetter == 'I' or zoneLetter == 'O':
-        raise ValueError("MGRSPoint zone letter " + zoneLetter + " not handled: " + mgrsString)
+        raise ValueError("MGRSPoint zone letter " +
+                         zoneLetter + " not handled: " + mgrsString)
 
     # hunK = mgrsString.substring(i, i += 2)
     hunK = mgrsString[i:i + 2]
@@ -612,7 +613,7 @@ def UTMtoLL(utm):
     # if the Zone letter isn't exactly correct it should indicate
     # the hemisphere correctly
     if zoneLetter < 'N':
-        y -= 10000000.0;  # remove 10,000,000 meter offset used
+        y -= 10000000.0  # remove 10,000,000 meter offset used
     # for southern hemisphere
 
     # There are 60 zones with zone 1 being at West -180 to -174
@@ -624,26 +625,27 @@ def UTMtoLL(utm):
 
     M = y / k0
     mu = M / (a * (
-                1 - eccSquared / 4 - 3 * eccSquared * eccSquared / 64 - 5 * eccSquared * eccSquared * eccSquared / 256))
+        1 - eccSquared / 4 - 3 * eccSquared * eccSquared / 64 - 5 * eccSquared * eccSquared * eccSquared / 256))
 
     phi1Rad = mu + (3 * e1 / 2 - 27 * e1 * e1 * e1 / 32) * math.sin(2 * mu) + (
-                21 * e1 * e1 / 16 - 55 * e1 * e1 * e1 * e1 / 32) * math.sin(4 * mu) + (
-                          151 * e1 * e1 * e1 / 96) * math.sin(6 * mu)
+        21 * e1 * e1 / 16 - 55 * e1 * e1 * e1 * e1 / 32) * math.sin(4 * mu) + (
+        151 * e1 * e1 * e1 / 96) * math.sin(6 * mu)
     # double phi1 = Projmath.radToDeg(phi1Rad);
 
     N1 = a / math.sqrt(1 - eccSquared * math.sin(phi1Rad) * math.sin(phi1Rad))
     T1 = math.tan(phi1Rad) * math.tan(phi1Rad)
     C1 = eccPrimeSquared * math.cos(phi1Rad) * math.cos(phi1Rad)
-    R1 = a * (1 - eccSquared) / math.pow(1 - eccSquared * math.sin(phi1Rad) * math.sin(phi1Rad), 1.5)
+    R1 = a * (1 - eccSquared) / math.pow(1 - eccSquared *
+                                         math.sin(phi1Rad) * math.sin(phi1Rad), 1.5)
     D = x / (N1 * k0)
 
     lat = phi1Rad - (N1 * math.tan(phi1Rad) / R1) * (
-                D * D / 2 - (5 + 3 * T1 + 10 * C1 - 4 * C1 * C1 - 9 * eccPrimeSquared) * D * D * D * D / 24 + (
-                    61 + 90 * T1 + 298 * C1 + 45 * T1 * T1 - 252 * eccPrimeSquared - 3 * C1 * C1) * D * D * D * D * D * D / 720)
+        D * D / 2 - (5 + 3 * T1 + 10 * C1 - 4 * C1 * C1 - 9 * eccPrimeSquared) * D * D * D * D / 24 + (
+            61 + 90 * T1 + 298 * C1 + 45 * T1 * T1 - 252 * eccPrimeSquared - 3 * C1 * C1) * D * D * D * D * D * D / 720)
     lat = radToDeg(lat)
 
     lon = (D - (1 + 2 * T1 + C1) * D * D * D / 6 + (
-                5 - 2 * C1 + 28 * T1 - 3 * C1 * C1 + 8 * eccPrimeSquared + 24 * T1 * T1) * D * D * D * D * D / 120) / math.cos(
+        5 - 2 * C1 + 28 * T1 - 3 * C1 * C1 + 8 * eccPrimeSquared + 24 * T1 * T1) * D * D * D * D * D / 120) / math.cos(
         phi1Rad)
     lon = LongOrigin + radToDeg(lon)
 
@@ -693,5 +695,3 @@ if __name__ == '__main__':
 
     print(LLtoMGRS(39.84389877319336, 29.5625991821))
     print(MGRStoLL("38SLL1234567890"))
-
-
