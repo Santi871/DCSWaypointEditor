@@ -40,7 +40,7 @@ def install_dcs_bios(dcs_path):
 
             copytree(tmp_dir + '\\DCS-BIOS', dcs_path + "Scripts\\DCS-BIOS")
 
-            PyGUI.Popup('DCS-BIOS v{} successfully downloaded and installed'.format(DCS_BIOS_VERSION))
+            PyGUI.Popup(f'DCS-BIOS v{DCS_BIOS_VERSION} successfully downloaded and installed')
 
 
 def first_time_setup():
@@ -69,9 +69,10 @@ def first_time_setup():
                 gui.Element("install_button").Update(disabled=True)
                 gui.Element("accept_button").Update(disabled=False)
                 gui.Element("dcs_bios").Update(value="Installed")
-            except (FileExistsError, FileNotFoundError, requests.HTTPError):
+            except (FileExistsError, FileNotFoundError, requests.HTTPError) as e:
                 gui.Element("dcs_bios").Update(value="Failed to install")
                 setup_logger.error("DCS-BIOS failed to install", exc_info=True)
+                PyGUI.Popup(f"DCS-BIOS failed to install:\n{e}")
         elif event == "dcs_path":
             dcs_bios_detected = detect_dcs_bios(values["dcs_path"])
             if dcs_bios_detected:
