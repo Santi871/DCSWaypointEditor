@@ -16,11 +16,11 @@ from slpp import slpp as lua
 import src.pymgrs as mgrs
 import PySimpleGUI as PyGUI
 import zlib
-from desktopmagic.screengrab_win32 import getDisplayRects
+from desktopmagic.screengrab_win32 import getDisplaysAsImages
 import cv2
 import numpy
 import re
-
+import datetime
 
 def json_zip(j):
     j = base64.b64encode(
@@ -144,6 +144,7 @@ class GUI:
         self.capture_key = try_get_setting(self.editor.settings, "capture_key", "ctrl+t")
         self.quick_capture_hotkey = try_get_setting(self.editor.settings, "quick_capture_hotkey", "ctrl+alt+t")
         self.enter_aircraft_hotkey = try_get_setting(self.editor.settings, "enter_aircraft_hotkey", "ctrl+shift+t")
+        self.save_debug_images = try_get_setting(self.editor.settings, "save_debug_images", "false")
         self.software_version = software_version
         self.is_focused = True
         self.scaled_dcs_gui = False
@@ -485,18 +486,21 @@ class GUI:
         self.logger.debug("Attempting to capture map coords")
         gui_mult = 2 if self.scaled_dcs_gui else 1
 
-        screens = getDisplayRects()
-        self.logger.debug("Found Screens " + str(screens))
+        dt = datetime.datetime.now()
+        debug_dirname = dt.strftime("%Y-%m-%d-%H-%M-%S")
+
+        if self.save_debug_images == "true":
+            os.mkdir(debug_dirname)
 
         map_image = cv2.imread("map.bin")
         arrow_image = cv2.imread("arrow.bin")
 
-        capture_rectangle = None
+        for display_number, image in enumerate(getDisplaysAsImages(), 1):
+            self.logger.debug("Looking for map on screen " + str(display_number))
 
-        for screen in screens:
-            self.logger.debug("Looking for map on screen " + str(screen))
+            if self.save_debug_images == "true":
+                image.save(debug_dirname + "/screenshot-"+str(display_number)+".png")
 
-            image = ImageGrab.grab(screen)  # grab a screenshot of this entire screen in PIL format
             screen_image = cv2.cvtColor(numpy.array(image), cv2.COLOR_RGB2BGR)  # convert it to OpenCV format
 
             search_result = cv2.matchTemplate(screen_image, map_image, cv2.TM_CCOEFF_NORMED)  # search for the "MAP" text in the screenshot
@@ -518,17 +522,28 @@ class GUI:
 
                 self.logger.debug("Capturing " + str(start_x) + "x" + str(start_y) + " to " + str(end_x) + "x" + str(end_y) )
 
-                capture_rectangle = [screen[0] + start_x, screen[1] + start_y, screen[0] + end_x, screen[1] + end_y]
-                lat_lon_image = ImageGrab.grab(capture_rectangle)
-                enhancer = ImageEnhance.Contrast(lat_lon_image)
+                lat_lon_image = image.crop([start_x, start_y, end_x, end_y])
 
-                captured_map_coords = pytesseract.image_to_string(ImageOps.invert(enhancer.enhance(6)))
+                if self.save_debug_images == "true":
+                    lat_lon_image.save(debug_dirname + "/lat_lon_image.png")
+
+                enhancer = ImageEnhance.Contrast(lat_lon_image)
+                enhanced = enhancer.enhance(6)
+                if self.save_debug_images == "true":
+                    enhanced.save(debug_dirname + "/lat_lon_image_enhanced.png")
+
+                inverted = ImageOps.invert(enhanced)
+                if self.save_debug_images == "true":
+                    inverted.save(debug_dirname + "/lat_lon_image_inverted.png")
+
+                captured_map_coords = pytesseract.image_to_string(inverted)
 
                 self.logger.debug("Raw captured text: " + captured_map_coords)
                 return captured_map_coords
 
-        self.logger.debug("Returning None (could not find the map anywhere i guess)")
-        return None
+        self.logger.debug("Raise exception (could not find the map anywhere i guess)")
+
+        raise ValueError("F10 map not found")
 
     def export_to_string(self):
         dump = str(self.profile)
