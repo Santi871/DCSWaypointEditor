@@ -1,3 +1,4 @@
+numpy
 requests
 Pillow
 pytesseract
@@ -7,3 +8,6 @@ LatLon23
 keyboard
 SLPP-23
 pyperclip
+Desktopmagic
+pywin32
+opencv-python
