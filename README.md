@@ -7,6 +7,8 @@ Currently supported aircraft:
 * F/A-18C
 * AV-8B
 * M-2000C
+* F-14A/B
+* A-10C
 
 
 ## Installation

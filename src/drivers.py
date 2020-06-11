@@ -8,7 +8,7 @@ class DriverException(Exception):
     pass
 
 
-def latlon_tostring(latlong, decimal_minutes_mode=False, easting_zfill=2, zfill_minutes=2, one_digit_seconds=False):
+def latlon_tostring(latlong, decimal_minutes_mode=False, easting_zfill=2, zfill_minutes=2, one_digit_seconds=False, precision=4):
 
     if not decimal_minutes_mode:
         lat_deg = str(abs(round(latlong.lat.degree)))
@@ -40,14 +40,14 @@ def latlon_tostring(latlong, decimal_minutes_mode=False, easting_zfill=2, zfill_
         return lat_deg + lat_min + lat_sec, lon_deg + lon_min + lon_sec
     else:
         lat_deg = str(abs(round(latlong.lat.degree)))
-        lat_min = str(round(latlong.lat.decimal_minute, 4))
+        lat_min = str(round(latlong.lat.decimal_minute, precision))
 
         lat_min_split = lat_min.split(".")
         lat_min_split[0] = lat_min_split[0].zfill(zfill_minutes)
         lat_min = ".".join(lat_min_split)
 
         lon_deg = str(abs(round(latlong.lon.degree))).zfill(easting_zfill)
-        lon_min = str(round(latlong.lon.decimal_minute, 4))
+        lon_min = str(round(latlong.lon.decimal_minute, precision))
 
         lon_min_split = lon_min.split(".")
         lon_min_split[0] = lon_min_split[0].zfill(zfill_minutes)
@@ -552,15 +552,13 @@ class WarthogDriver(Driver):
 
     def enter_number(self, number):
         for num in str(number):
-            if num == '.':
-                break
-            
-            self.cdu(num)
-
+            if num != '.':
+                self.logger.debug(f"Entering value: " + str(num))
+                self.cdu(num)
 
     def enter_coords(self, latlong):
-        lat_str, lon_str = latlon_tostring(latlong, decimal_minutes_mode=False, easting_zfill=3)
-        self.logger.debug(f"Entering coords string: {lat_str[:-2]}, {lon_str[:-2]}")
+        lat_str, lon_str = latlon_tostring(latlong, decimal_minutes_mode=True, easting_zfill=3, precision=3)
+        self.logger.debug(f"Entering coords string: {lat_str}, {lon_str}")
 
         self.clear_input(repeat=2)
 
@@ -595,7 +593,12 @@ class WarthogDriver(Driver):
             self.cdu("LSK_7R", self.short_delay)
             self.enter_waypoint_name(wp)
             self.enter_coords(wp.position)
-            self.enter_elevation(wp.elevation)
+
+            # if the elevation is exactly 0ft we don't enter it an the CDU will automatically set it to 0ft AGL
+            if wp.elevation != 0:
+                self.enter_elevation(wp.elevation)
+            else:
+                self.logger.debug("Not entering elevation because it is 0")
 
     def enter_all(self, profile):
         self.enter_waypoints(self.validate_waypoints(profile.waypoints_as_list))
