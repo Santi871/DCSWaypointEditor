@@ -267,7 +267,8 @@ class GUI:
                             disabled=False, key="tomcat", enable_events=True),
                 PyGUI.Radio("A-10C", group_id="ac_type",
                             disabled=False, key="warthog", enable_events=True),
-            ]
+            ],
+            [PyGUI.Radio("F-16C", group_id="ac_type", disabled=False, key="viper", enable_events=True),]
         ]
 
         framelongitude = PyGUI.Frame("Longitude", [[PyGUI.Column(longitude_col1), PyGUI.Column(longitude_col2),
@@ -967,7 +968,7 @@ class GUI:
                     except (TypeError, ValueError, UnboundLocalError) as e:
                         self.logger.error(f"Failed to decode MGRS: {e}")
 
-            elif event in ("hornet", "tomcat", "harrier", "warthog", "mirage"):
+            elif event in ("hornet", "tomcat", "harrier", "warthog", "mirage", "viper"):
                 self.profile.aircraft = event
                 self.editor.set_driver(event)
                 self.update_waypoints_list()
