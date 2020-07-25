@@ -602,3 +602,101 @@ class WarthogDriver(Driver):
 
     def enter_all(self, profile):
         self.enter_waypoints(self.validate_waypoints(profile.waypoints_as_list))
+
+
+class ViperDriver(Driver):
+    def __init__(self, logger, config):
+        super().__init__(logger, config)
+        self.limits = dict(WP=127)
+
+    def icp_btn(self, num, delay_after=None, delay_release=None):
+        key = f"ICP_BTN_{num}"
+        if num == "ENTR":
+            key = "ICP_ENTR_BTN"
+        self.press_with_delay(key, delay_after=delay_after, delay_release=delay_release)
+
+    def icp_ded(self, num, delay_after=None, delay_release=None):
+        if delay_release is None:
+            delay_release = self.short_delay
+
+        if num == "DN":
+            self.s.sendto(f"ICP_DED_SW 0\n".replace("OSB", "OS").encode(
+                "utf-8"), (self.host, self.port))
+        elif num == "UP":
+            self.s.sendto(f"ICP_DED_SW 2\n".replace("OSB", "OS").encode(
+                "utf-8"), (self.host, self.port))
+
+        sleep(delay_release)
+        self.s.sendto(f"ICP_DED_SW 1\n".replace("OSB", "OS").encode(
+            "utf-8"), (self.host, self.port))
+
+    def icp_data(self, num, delay_after=None, delay_release=None):
+        if delay_release is None:
+            delay_release = self.short_delay
+
+        if num == "DN":
+            self.s.sendto(f"ICP_DATA_UP_DN_SW 0\n".replace("OSB", "OS").encode(
+                "utf-8"), (self.host, self.port))
+        elif num == "UP":
+            self.s.sendto(f"ICP_DATA_UP_DN_SW 2\n".replace("OSB", "OS").encode(
+                "utf-8"), (self.host, self.port))
+        elif num == "RTN":
+            self.s.sendto(f"ICP_DATA_RTN_SEQ_SW 0\n".replace("OSB", "OS").encode(
+                "utf-8"), (self.host, self.port))
+
+        sleep(delay_release)
+        self.s.sendto(f"ICP_DATA_UP_DN_SW 1\n".replace("OSB", "OS").encode(
+            "utf-8"), (self.host, self.port))
+        self.s.sendto(f"ICP_DATA_RTN_SEQ_SW 1\n".replace("OSB", "OS").encode(
+            "utf-8"), (self.host, self.port))
+
+    def enter_number(self, number):
+        for num in str(number):
+            if num != '.':
+                self.icp_btn(num)
+
+    def enter_elevation(self, elev):
+        if elev < 0:
+            self.icp_btn("0")
+        self.enter_number(elev)
+        self.icp_btn("ENTR")
+
+    def enter_coords(self, latlong):
+        lat_str, lon_str = latlon_tostring(latlong, decimal_minutes_mode=True, easting_zfill=3, precision=3)
+        self.logger.debug(f"Entering coords string: {lat_str}, {lon_str}")
+
+        if latlong.lat.degree > 0:
+            self.icp_btn("2")
+        else:
+            self.icp_btn("8")
+        self.enter_number(lat_str)
+        self.icp_btn("ENTR")
+        self.icp_data("DN")
+
+        if latlong.lon.degree > 0:
+            self.icp_btn("6")
+        else:
+            self.icp_btn("4")
+
+        self.enter_number(lon_str)
+        self.icp_btn("ENTR")
+        self.icp_data("DN")
+
+    def enter_waypoints(self, wps):
+        self.icp_btn("4", delay_release=1)
+        self.icp_data("DN", delay_release=1)
+
+        for wp in wps:
+            self.enter_coords(wp.position)
+            if wp.elevation != 0:
+                self.enter_elevation(wp.elevation)
+
+            self.icp_data("UP")
+            self.icp_data("UP")
+            self.icp_ded("UP")
+
+        self.icp_ded("DN")
+        self.icp_data("RTN")
+
+    def enter_all(self, profile):
+        self.enter_waypoints(self.validate_waypoints(profile.all_waypoints_as_list))
