@@ -595,7 +595,7 @@ class GUI:
             lat_str = res.group(2) + " " + res.group(3) + " " + res.group(1)
             lon_str = res.group(5) + " " + res.group(6) + " " + res.group(4)
             position = string2latlon(lat_str, lon_str, "d% %M% %H")
-            elevation = float(res.group(9))
+            elevation = float(res.group(7))
 
             if res.group(8) == "M":
                 elevation = elevation * 3.281
