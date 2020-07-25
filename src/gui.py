@@ -319,8 +319,8 @@ class GUI:
 
         col1 = [
             [PyGUI.Text("Select preset location")],
-            [PyGUI.Combo(values=[""] + [base.name for _, base in self.editor.default_bases.items()], readonly=False,
-                         enable_events=True, key='baseSelector'),
+            [PyGUI.Combo(values=[""] + sorted([base.name for _, base in self.editor.default_bases.items()],),
+                         readonly=False, enable_events=True, key='baseSelector'),
              PyGUI.Button(button_text="F", key="filter")],
             [framedata, framewptype],
             [frameposition],
