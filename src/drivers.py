@@ -662,7 +662,7 @@ class ViperDriver(Driver):
         self.icp_btn("ENTR")
 
     def enter_coords(self, latlong):
-        lat_str, lon_str = latlon_tostring(latlong, decimal_minutes_mode=True, easting_zfill=3, precision=3)
+        lat_str, lon_str = latlon_tostring(latlong, decimal_minutes_mode=True, easting_zfill=3, zfill_minutes=3, one_digit_seconds=False, precision=3)
         self.logger.debug(f"Entering coords string: {lat_str}, {lon_str}")
 
         if latlong.lat.degree > 0:
