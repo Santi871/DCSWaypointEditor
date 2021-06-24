@@ -40,14 +40,14 @@ def latlon_tostring(latlong, decimal_minutes_mode=False, easting_zfill=2, zfill_
         return lat_deg + lat_min + lat_sec, lon_deg + lon_min + lon_sec
     else:
         lat_deg = str(abs(round(latlong.lat.degree)))
-        lat_min = str(round(latlong.lat.decimal_minute, precision))
+        lat_min = str(format(latlong.lat.decimal_minute, str(precision/10)+"f"))
 
         lat_min_split = lat_min.split(".")
         lat_min_split[0] = lat_min_split[0].zfill(zfill_minutes)
         lat_min = ".".join(lat_min_split)
 
         lon_deg = str(abs(round(latlong.lon.degree))).zfill(easting_zfill)
-        lon_min = str(round(latlong.lon.decimal_minute, precision))
+        lon_min = str(format(latlong.lon.decimal_minute, str(precision/10)+"f"))
 
         lon_min_split = lon_min.split(".")
         lon_min_split[0] = lon_min_split[0].zfill(zfill_minutes)
@@ -278,17 +278,6 @@ class HornetDriver(Driver):
             sorted_stations.append(stations[k])
 
         self.lmdi("19")
-        self.lmdi("15")
-        # select stations
-        if 8 in stations:
-            self.lmdi("14")
-        if 2 in stations:
-            self.lmdi("11")
-        if 7 in stations:
-            self.lmdi("13")
-        if 3 in stations:
-            self.lmdi("12")
-        self.lmdi("15")
         self.lmdi("4")
 
         for msns in sorted_stations:
@@ -301,7 +290,6 @@ class HornetDriver(Driver):
                 n += 1
 
             self.lmdi("13")
-        self.lmdi("6")
 
     def enter_all(self, profile):
         self.enter_missions(self.validate_waypoints(profile.msns_as_list))
@@ -662,7 +650,7 @@ class ViperDriver(Driver):
         self.icp_btn("ENTR")
 
     def enter_coords(self, latlong):
-        lat_str, lon_str = latlon_tostring(latlong, decimal_minutes_mode=True, easting_zfill=3, precision=3)
+        lat_str, lon_str = latlon_tostring(latlong, decimal_minutes_mode=True, easting_zfill=3, zfill_minutes=2, precision=3)
         self.logger.debug(f"Entering coords string: {lat_str}, {lon_str}")
 
         if latlong.lat.degree > 0:
@@ -700,3 +688,4 @@ class ViperDriver(Driver):
 
     def enter_all(self, profile):
         self.enter_waypoints(self.validate_waypoints(profile.all_waypoints_as_list))
+
