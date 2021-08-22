@@ -1,0 +1,18 @@
+Metadata-Version: 1.1
+Name: Desktopmagic
+Version: 14.3.11
+Summary: Robust multi-monitor screenshot grabber (Windows-only right now)
+Home-page: https://github.com/ludios/Desktopmagic
+Author: Ivan Kozik
+Author-email: ivan@ludios.org
+License: UNKNOWN
+Description: UNKNOWN
+Platform: UNKNOWN
+Classifier: Programming Language :: Python :: 2
+Classifier: Programming Language :: Python :: 3
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Environment :: Win32 (MS Windows)
+Classifier: Operating System :: Microsoft :: Windows
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Topic :: Multimedia :: Graphics :: Capture :: Screen Capture

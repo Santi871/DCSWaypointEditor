@@ -1,0 +1,12 @@
+LICENSE
+README.rst
+setup.cfg
+setup.py
+pytesseract/__init__.py
+pytesseract/pytesseract.py
+pytesseract.egg-info/PKG-INFO
+pytesseract.egg-info/SOURCES.txt
+pytesseract.egg-info/dependency_links.txt
+pytesseract.egg-info/entry_points.txt
+pytesseract.egg-info/requires.txt
+pytesseract.egg-info/top_level.txt

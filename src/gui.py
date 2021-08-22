@@ -331,7 +331,7 @@ class GUI:
         colmain1 = [
             [PyGUI.MenuBar([["Profile",
                              [[
-                                 ["Import", ["Paste as string from clipboard", "Load from encoded file"]]],
+                                 ["Import", ["Paste as string from clipboard", "Load from encoded file", "Import from CombatFlite NS430 data"]]],
                                  "Export", ["Copy as string to clipboard", "Copy plain text to clipboard",
                                             "Save as encoded file"],
                               ]]])],
@@ -896,6 +896,20 @@ class GUI:
                 profile_string = self.profile.to_readable_string()
                 pyperclip.copy(profile_string)
                 PyGUI.Popup("Profile copied as plain text to clipboard")
+
+            elif event == "Import from CombatFlite NS430 data":
+                filename = PyGUI.PopupGetFile(
+                    "Enter file name", "Importing profile")
+
+                if filename is None:
+                    continue
+
+                with open(filename, "r") as f:
+                    self.profile = Profile.from_string(f.read())
+                self.update_waypoints_list()
+
+                if self.profile.profilename:
+                    self.update_profiles_list(self.profile.profilename)
 
             elif event == "Load from encoded file":
                 filename = PyGUI.PopupGetFile(

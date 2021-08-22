@@ -1,0 +1,12 @@
+..\..\..\Scripts\pytesseract-script.py
+..\..\..\Scripts\pytesseract.exe
+..\pytesseract\__init__.py
+..\pytesseract\__pycache__\__init__.cpython-37.pyc
+..\pytesseract\__pycache__\pytesseract.cpython-37.pyc
+..\pytesseract\pytesseract.py
+PKG-INFO
+SOURCES.txt
+dependency_links.txt
+entry_points.txt
+requires.txt
+top_level.txt

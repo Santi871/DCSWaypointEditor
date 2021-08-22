@@ -1,0 +1,16 @@
+Metadata-Version: 2.0
+Name: SLPP-23
+Version: 1.1
+Summary: SLPP-23 is a simple lua-python data structures parser
+Home-page: https://github.com/IlyaSkriblovsky/slpp-23
+Author: Ilya Skriblovsky
+Author-email: ilyaskriblovsky@gmail.com
+License: https://github.com/IlyaSkriblovsky/slpp-23/blob/master/LICENSE
+Description-Content-Type: UNKNOWN
+Keywords: lua
+Platform: UNKNOWN
+Requires-Dist: six
+
+UNKNOWN
+
+

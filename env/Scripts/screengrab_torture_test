@@ -1,0 +1,5 @@
+#!C:\Users\Gavin\Desktop\DCSWaypointEditor\env\Scripts\python.exe
+
+from desktopmagic.scripts.screengrab_torture_test import main
+
+main()
