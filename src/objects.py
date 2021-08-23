@@ -3,6 +3,8 @@ from typing import Any
 from LatLon23 import LatLon, Longitude, Latitude
 import json
 import urllib.request
+import csv
+import numpy as np
 from os import walk, path
 from src.logger import get_logger
 
@@ -278,9 +280,23 @@ class Profile:
     @staticmethod
     def from_NS430(profile_string):
 
+        waypoints = []
         # profile_data = json.loads(profile_string)
         try:
-            print(profile_string)
+            print("DEBUG: File contents below.\n" + profile_string)
+            print("DEBUG: Parsing as a CSV with specific delimeter.\n")
+            delimiter = ';'
+            data = []
+            for row in csv.reader(profile_string.splitlines(), delimiter=delimiter):
+                data.append(row)
+
+            l = len(data)
+            data = np.array(data[2:l])
+            for count, value in enumerate(data):
+                print("'number':", count+1)
+                print("'name':" + value[3])
+                print("'latitude':" + value[2])
+                print("'longitude':" + value[1])
 
         except Exception as e:
             logger.error(e)
@@ -299,7 +315,7 @@ class Profile:
             if profile.profilename:
                 profile.save()
             return profile
-
+            
         except Exception as e:
             logger.error(e)
             raise ValueError("Failed to load profile from data")
