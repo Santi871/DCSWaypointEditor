@@ -19,9 +19,9 @@ def main():
     except FileNotFoundError:
         first_time = True
 
-    update_exit = check_version(version)
-    if update_exit:
-        return
+    #update_exit = check_version(version)
+    #if update_exit:
+    #    return
 
     setup_completed = not first_time or first_time_setup()
 

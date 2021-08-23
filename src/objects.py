@@ -164,7 +164,7 @@ class MSN(Waypoint):
 
 
 class Profile:
-    def __init__(self, profilename, waypoints=None, aircraft="hornet"):
+    def __init__(self, profilename, waypoints=None, aircraft="harrier"):
         self.profilename = profilename
         self.aircraft = aircraft
 
@@ -274,6 +274,17 @@ class Profile:
                 readable_string += str(wp)
                 readable_string += f": {position[0]} {position[1]} | {wp.elevation}ft\n"
         return readable_string
+
+    @staticmethod
+    def from_NS430(profile_string):
+
+        # profile_data = json.loads(profile_string)
+        try:
+            print(profile_string)
+
+        except Exception as e:
+            logger.error(e)
+            raise ValueError("Failed to convert NS430 data to json format")
 
     @staticmethod
     def from_string(profile_string):

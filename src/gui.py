@@ -905,11 +905,13 @@ class GUI:
                     continue
 
                 with open(filename, "r") as f:
-                    self.profile = Profile.from_string(f.read())
-                self.update_waypoints_list()
+                    # Need to add a step here to convert the NS430 into json, OR
+                    # come up with and alternate from_string function?
+                    self.profile = Profile.from_NS430(f.read())
+                # self.update_waypoints_list()
 
-                if self.profile.profilename:
-                    self.update_profiles_list(self.profile.profilename)
+                # if self.profile.profilename:
+                #     self.update_profiles_list(self.profile.profilename)
 
             elif event == "Load from encoded file":
                 filename = PyGUI.PopupGetFile(
