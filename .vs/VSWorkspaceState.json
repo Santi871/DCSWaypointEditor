@@ -1,6 +1,14 @@
 {
   "ExpandedNodes": [
     "",
+    "\\data",
+    "\\env",
+    "\\env\\Include",
+    "\\env\\Lib",
+    "\\env\\Lib\\site-packages",
+    "\\env\\Lib\\site-packages\\PySimpleGUI",
+    "\\env\\Lib\\site-packages\\PySimpleGUI-4.46.0.dist-info",
+    "\\env\\Scripts",
     "\\src"
   ],
   "SelectedNode": "\\dcs_wp_editor.py",

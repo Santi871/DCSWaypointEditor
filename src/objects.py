@@ -7,7 +7,9 @@ import csv
 import numpy as np
 from os import walk, path
 from src.logger import get_logger
-
+from datetime import datetime
+import random
+import string
 from src.models import ProfileModel, WaypointModel, SequenceModel, IntegrityError, db
 
 
@@ -278,25 +280,50 @@ class Profile:
         return readable_string
 
     @staticmethod
-    def from_NS430(profile_string):
+    def from_NS430(filename):
 
-        waypoints = []
         # profile_data = json.loads(profile_string)
         try:
-            print("DEBUG: File contents below.\n" + profile_string)
+            print("DEBUG: File contents below.\n" + filename)
             print("DEBUG: Parsing as a CSV with specific delimeter.\n")
-            delimiter = ';'
-            data = []
-            for row in csv.reader(profile_string.splitlines(), delimiter=delimiter):
-                data.append(row)
 
-            l = len(data)
-            data = np.array(data[2:l])
-            for count, value in enumerate(data):
-                print("'number':", count+1)
-                print("'name':" + value[3])
-                print("'latitude':" + value[2])
-                print("'longitude':" + value[1])
+            with open(filename, newline='') as datfile:
+                next(datfile)
+                data = csv.reader(datfile, delimiter=';')
+
+                # Create WP list
+                wpl = []
+                i = 0
+                for row in data:
+                    # Dictionary for each WP
+                    wpe = {}
+                    # Extract WP data from each list item
+                    lat = row[1]
+                    long = row[2]
+                    wp_name = row[3]
+                    # Set key value pairs within dictionary
+                    wpe["number"] = i+1
+                    wpe["elevation"] = 0
+                    wpe["name"] = wp_name
+                    wpe["wp_type"] = "WP"
+                    wpe["latitude"] = lat
+                    wpe["longitude"] = long
+                    # Append the WP dictionary to the WP list
+                    wpl.append(wpe)
+
+                    i+=1
+
+                # Dictionary for the top level key value pairs that we will export as json
+                wp_json = {}
+                # Creating the 3 key value pairs at the top level and appending the WP list
+                wp_json["waypoints"] = wpl
+                wp_json["name"] = "cf2wpe-{0}-{1}".format(datetime.today().strftime('%Y%m%d'), ''.join(random.choice(string.ascii_lowercase) for i in range(4)))
+                wp_json["aircraft"] = "harrier"
+
+                # Serializing json  
+                with open(wp_json["name"] + ".json", "w") as outfile:
+                    json.dump(wp_json, outfile)
+            return outfile
 
         except Exception as e:
             logger.error(e)

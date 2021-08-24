@@ -22,19 +22,19 @@ import numpy
 import re
 import datetime
 
-# PyGUI.theme('Light Blue 1')
-PyGUI.theme_background_color('#5A5F6F')
-PyGUI.theme_input_background_color('#ffffff')
-PyGUI.theme_element_background_color('#5A5F6F')
-PyGUI.theme_element_text_color('#FFFFFF')
-PyGUI.theme_slider_color('#FFFFFF')
-PyGUI.theme_text_color('#FFFFFF')
-PyGUI.theme_button_color('#000033')
-PyGUI.theme_input_text_color('#000033')
-PyGUI.theme_progress_bar_color('#CC0033')
-PyGUI.theme_slider_border_width('0')
-PyGUI.theme_progress_bar_border_width('0')
-PyGUI.theme_border_width('0')
+#PyGUI.theme('Light Blue 1')
+#PyGUI.theme_background_color('#5A5F6F')
+#PyGUI.theme_input_background_color('#ffffff')
+#PyGUI.theme_element_background_color('#5A5F6F')
+#PyGUI.theme_element_text_color('#FFFFFF')
+#PyGUI.theme_slider_color('#FFFFFF')
+#PyGUI.theme_text_color('#FFFFFF')
+#PyGUI.theme_button_color('#000033')
+#PyGUI.theme_input_text_color('#000033')
+#PyGUI.theme_progress_bar_color('#CC0033')
+#PyGUI.theme_slider_border_width('0')
+#PyGUI.theme_progress_bar_border_width('0')
+#PyGUI.theme_border_width('0')
 
 def json_zip(j):
     j = base64.b64encode(
@@ -915,15 +915,16 @@ class GUI:
                 if filename is None:
                     continue
 
-                with open(filename, "r") as f:
-                    # Need to add a step here to convert the NS430 into json, OR
-                    # come up with and alternate from_string function?
-                    self.profile = Profile.from_NS430(f.read())
-                # self.update_waypoints_list()
+                self.profile = Profile.from_NS430(filename)
+                outfile = self.profile.name
 
-                # if self.profile.profilename:
-                #     self.update_profiles_list(self.profile.profilename)
+                with open(outfile, "r") as f:
+                    self.profile = Profile.from_string(f.read())
+                self.update_waypoints_list()
 
+                if self.profile.profilename:
+                    self.update_profiles_list(self.profile.profilename)
+                
             elif event == "Load from encoded file":
                 filename = PyGUI.PopupGetFile(
                     "Enter file name", "Importing profile")
