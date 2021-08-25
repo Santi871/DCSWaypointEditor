@@ -22,7 +22,20 @@ import numpy
 import re
 import datetime
 
-#PyGUI.theme('Light Blue 1')
+PyGUI.LOOK_AND_FEEL_TABLE['Hermes'] = {
+    'BACKGROUND': '#5A5F6F',
+    'TEXT': '#FFFFFF',
+    'INPUT': '#ffffff',
+    'TEXT_INPUT': '#000033',
+    'SCROLL': '# FFFFFF',
+    'BUTTON': ('#ffffff', '#000033'),
+    'PROGRESS': ('#CC0033', '#000033'),
+    'BORDER': 1,
+    'SLIDER_DEPTH': 0, 
+    'PROGRESS_DEPTH': 0,
+}
+
+PyGUI.theme('Hermes')
 #PyGUI.theme_background_color('#5A5F6F')
 #PyGUI.theme_input_background_color('#ffffff')
 #PyGUI.theme_element_background_color('#5A5F6F')
