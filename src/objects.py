@@ -298,8 +298,8 @@ class Profile:
                     # Dictionary for each WP
                     wpe = {}
                     # Extract WP data from each list item
-                    lat = row[1]
-                    long = row[2]
+                    long = row[1]
+                    lat = row[2]
                     wp_name = row[3]
                     # Set key value pairs within dictionary
                     wpe["number"] = i+1
