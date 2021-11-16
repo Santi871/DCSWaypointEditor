@@ -10,7 +10,7 @@ config.read("../fixtures/settings.ini")
 
 class TestBaseDriver(unittest.TestCase):
     def setUp(self) -> None:
-        self.driver = drivers.Driver(logger, config)
+        self.driver = drivers.BaseDriver(logger, config)
 
     def test_send(self):
         self.assertTrue(self.driver.press_with_delay("UFC_1"))

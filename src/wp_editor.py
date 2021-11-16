@@ -2,7 +2,8 @@ from time import sleep
 from src.objects import default_bases
 from src.db import DatabaseInterface
 from src.logger import get_logger
-from src.drivers import HornetDriver, HarrierDriver, MirageDriver, TomcatDriver, DriverException, WarthogDriver
+from src.drivers import HornetBaseDriver, HarrierBaseDriver, MirageBaseDriver, TomcatBaseDriver, DriverException, WarthogBaseDriver
+from src.writer import FileWriter
 
 
 class WaypointEditor:
@@ -12,11 +13,13 @@ class WaypointEditor:
         self.settings = settings
         self.db = DatabaseInterface(settings['PREFERENCES'].get("DB_Name", "profiles.db"))
         self.default_bases = default_bases
-        self.drivers = dict(hornet=HornetDriver(self.logger, settings),
-                            harrier=HarrierDriver(self.logger, settings),
-                            mirage=MirageDriver(self.logger, settings),
-                            tomcat=TomcatDriver(self.logger, settings),
-                            warthog=WarthogDriver(self.logger, settings))
+
+        writer = FileWriter("output.txt")
+        self.drivers = dict(hornet=HornetBaseDriver(self.logger, settings, writer),
+                            harrier=HarrierBaseDriver(self.logger, settings, writer),
+                            mirage=MirageBaseDriver(self.logger, settings, writer),
+                            tomcat=TomcatBaseDriver(self.logger, settings, writer),
+                            warthog=WarthogBaseDriver(self.logger, settings, writer))
         self.driver = self.drivers["hornet"]
 
     def set_driver(self, driver_name):
@@ -28,9 +31,9 @@ class WaypointEditor:
     def enter_all(self, profile):
         self.logger.info(f"Entering waypoints for aircraft: {profile.aircraft}")
         sleep(int(self.settings['PREFERENCES'].get('Grace_Period', 5)))
+        self.driver.start()
         self.driver.enter_all(profile)
+        self.driver.stop()
 
     def stop(self):
         self.db.close()
-        if self.driver is not None:
-            self.driver.stop()

@@ -56,11 +56,10 @@ def latlon_tostring(latlong, decimal_minutes_mode=False, easting_zfill=2, zfill_
         return lat_deg + lat_min, lon_deg + lon_min
 
 
-class Driver:
-    def __init__(self, logger, config, host="127.0.0.1", port=7778):
+class BaseDriver:
+    def __init__(self, logger, config, writer):
         self.logger = logger
-        self.s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.host, self.port = host, port
+        self.writer = writer
         self.config = config
         self.limits = dict()
 
@@ -69,6 +68,9 @@ class Driver:
             self.medium_delay = float(self.config.get("PREFERENCES", "button_release_medium_delay"))
         except NoOptionError:
             self.short_delay, self.medium_delay = 0.2, 0.5
+
+    def start(self):
+        self.writer.open()
 
     def press_with_delay(self, key, delay_after=None, delay_release=None, raw=False):
         if not key:
@@ -84,15 +86,13 @@ class Driver:
 
         # TODO get rid of the OSB -> OS replacement
         if not raw:
-            sent = self.s.sendto(f"{key} 1\n".replace("OSB", "OS").encode(
-                "utf-8"), (self.host, self.port))
+            sent = self.writer.write(f"{key} 1\n".replace("OSB", "OS"))
             sleep(delay_release)
 
-            self.s.sendto(f"{key} 0\n".replace("OSB", "OS").encode(
-                "utf-8"), (self.host, self.port))
+            self.writer.write(f"{key} 0\n".replace("OSB", "OS"))
             strlen = len(encoded_str) + 3
         else:
-            sent = self.s.sendto(f"{key}\n".encode("utf-8"), (self.host, self.port))
+            sent = self.writer.write(f"{key}\n")
             strlen = len(encoded_str) + 1
 
         sleep(delay_after)
@@ -111,12 +111,12 @@ class Driver:
         return sorted(waypoints, key=lambda wp: wp.wp_type)
 
     def stop(self):
-        self.s.close()
+        self.writer.close()
 
 
-class HornetDriver(Driver):
-    def __init__(self, logger, config):
-        super().__init__(logger, config)
+class HornetBaseDriver(BaseDriver):
+    def __init__(self, logger, config, writer):
+        super().__init__(logger, config, writer)
         self.limits = dict(WP=None, MSN=6)
 
     def ufc(self, num, delay_after=None, delay_release=None):
@@ -309,9 +309,9 @@ class HornetDriver(Driver):
         self.enter_waypoints(self.validate_waypoints(profile.waypoints_as_list), profile.sequences_dict)
 
 
-class HarrierDriver(Driver):
-    def __init__(self, logger, config):
-        super().__init__(logger, config)
+class HarrierBaseDriver(BaseDriver):
+    def __init__(self, logger, config, writer):
+        super().__init__(logger, config, writer)
         self.limits = dict(WP=None)
 
     def ufc(self, num, delay_after=None, delay_release=None):
@@ -395,9 +395,9 @@ class HarrierDriver(Driver):
         self.enter_waypoints(self.validate_waypoints(profile.waypoints_as_list))
 
 
-class MirageDriver(Driver):
-    def __init__(self, logger, config):
-        super().__init__(logger, config)
+class MirageBaseDriver(BaseDriver):
+    def __init__(self, logger, config, writer):
+        super().__init__(logger, config, writer)
         self.limits = dict(WP=9)
 
     def pcn(self, num, delay_after=None, delay_release=None):
@@ -449,9 +449,9 @@ class MirageDriver(Driver):
         self.enter_waypoints(self.validate_waypoints(profile.waypoints_as_list))
 
 
-class TomcatDriver(Driver):
-    def __init__(self, logger, config):
-        super().__init__(logger, config)
+class TomcatBaseDriver(BaseDriver):
+    def __init__(self, logger, config, writer):
+        super().__init__(logger, config, writer)
         self.limits = dict(WP=3, FP=1, IP=1, ST=1, HA=1, DP=1, HB=1)
 
     def cap(self, num, delay_after=None, delay_release=None):
@@ -525,9 +525,9 @@ class TomcatDriver(Driver):
         self.enter_waypoints(self.validate_waypoints(profile.waypoints_as_list))
 
 
-class WarthogDriver(Driver):
-    def __init__(self, logger, config):
-        super().__init__(logger, config)
+class WarthogBaseDriver(BaseDriver):
+    def __init__(self, logger, config, writer):
+        super().__init__(logger, config, writer)
         self.limits = dict(WP=99)
 
     def cdu(self, num, delay_after=None, delay_release=None):
